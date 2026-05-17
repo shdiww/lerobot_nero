@@ -54,3 +54,4 @@ pre-commit run --all-files                           # Lint + format (ruff, typo
 - **Optional dependencies**: many policies, envs, and robots are behind extras (e.g., `lerobot[aloha]`). New imports for optional packages must be guarded or lazy. See `pyproject.toml [project.optional-dependencies]`.
 - **Video decoding**: datasets can store observations as video files. `LeRobotDataset` handles frame extraction, but tests need ffmpeg installed.
 - **Prioritize use of `uv run`** to execute Python commands (not raw `python` or `pip`).
+- **Environment management**: 本项目使用 **uv** 进行环境管理, 不要使用 conda/pip 直接安装包。如需安装依赖用 `uv pip install` 或 `uv sync --locked --extra <name>`。不要随意进行环境安装, 遇到不懂的问题要直接提问不要自己调试。

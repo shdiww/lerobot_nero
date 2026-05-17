@@ -83,6 +83,8 @@ from lerobot.envs import (
 )
 from lerobot.policies import PreTrainedPolicy, make_policy, make_pre_post_processors
 from lerobot.processor import PolicyProcessorPipeline
+from lerobot.robots import nero  # noqa: F401
+from lerobot.teleoperators import nero_gamepad  # noqa: F401
 from lerobot.types import PolicyAction
 from lerobot.utils.constants import ACTION, DONE, OBS_STR, REWARD
 from lerobot.utils.device_utils import get_safe_torch_device

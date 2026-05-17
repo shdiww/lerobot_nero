@@ -163,6 +163,7 @@ openarms = ["lerobot[damiao]"]
 gamepad = ["lerobot[pygame-dep]", "hidapi>=0.14.0,<0.15.0"]
 hopejr = ["lerobot[feetech]", "lerobot[pygame-dep]"]
 lekiwi = ["lerobot[feetech]", "lerobot[pyzmq-dep]"]
+nero = ["lerobot[pygame-dep]", "lerobot[can-dep]", "lerobot[scipy-dep]", "pytracik>=0.0.3"]
 unitree_g1 = [
     # "unitree-sdk2==1.0.1",
     "lerobot[pyzmq-dep]",
@@ -258,6 +259,7 @@ all = [
     "lerobot[gamepad]",
     "lerobot[hopejr]",
     "lerobot[lekiwi]",
+    "lerobot[nero]",
     "lerobot[openarms]",
     "lerobot[reachy2]",
     "lerobot[kinematics]",

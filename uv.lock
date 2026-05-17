@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "(python_full_version >= '3.15' and platform_machine == 'AMD64' and sys_platform == 'linux') or (python_full_version >= '3.15' and platform_machine == 'x86_64' and sys_platform == 'linux')",
@@ -1142,7 +1142,7 @@ name = "decord"
 version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy", marker = "(platform_machine != 'arm64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "numpy", marker = "(platform_machine != 'arm64' and platform_machine != 's390x' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 's390x' and sys_platform != 'darwin' and sys_platform != 'linux')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/11/79/936af42edf90a7bd4e41a6cac89c913d4b47fa48a26b042d5129a9242ee3/decord-0.6.0-py3-none-manylinux2010_x86_64.whl", hash = "sha256:51997f20be8958e23b7c4061ba45d0efcd86bffd5fe81c695d0befee0d442976", size = 13602299, upload-time = "2021-06-14T21:30:55.486Z" },
@@ -2729,6 +2729,7 @@ all = [
     { name = "pytest-cov" },
     { name = "pytest-timeout" },
     { name = "python-can" },
+    { name = "pytracik" },
     { name = "pyzmq" },
     { name = "qwen-vl-utils" },
     { name = "reachy2-sdk" },
@@ -2917,6 +2918,12 @@ multi-task-dit = [
     { name = "diffusers" },
     { name = "transformers" },
 ]
+nero = [
+    { name = "pygame" },
+    { name = "python-can" },
+    { name = "pytracik" },
+    { name = "scipy" },
+]
 notebook = [
     { name = "ipykernel" },
     { name = "jupyter" },
@@ -3076,6 +3083,7 @@ requires-dist = [
     { name = "lerobot", extras = ["av-dep"], marker = "extra == 'dataset'" },
     { name = "lerobot", extras = ["av-dep"], marker = "extra == 'evaluation'" },
     { name = "lerobot", extras = ["can-dep"], marker = "extra == 'damiao'" },
+    { name = "lerobot", extras = ["can-dep"], marker = "extra == 'nero'" },
     { name = "lerobot", extras = ["can-dep"], marker = "extra == 'robstride'" },
     { name = "lerobot", extras = ["damiao"], marker = "extra == 'all'" },
     { name = "lerobot", extras = ["damiao"], marker = "extra == 'openarms'" },
@@ -3117,6 +3125,7 @@ requires-dist = [
     { name = "lerobot", extras = ["matplotlib-dep"], marker = "extra == 'unitree-g1'" },
     { name = "lerobot", extras = ["metaworld"], marker = "extra == 'all'" },
     { name = "lerobot", extras = ["multi-task-dit"], marker = "extra == 'all'" },
+    { name = "lerobot", extras = ["nero"], marker = "extra == 'all'" },
     { name = "lerobot", extras = ["notebook"], marker = "extra == 'dev'" },
     { name = "lerobot", extras = ["openarms"], marker = "extra == 'all'" },
     { name = "lerobot", extras = ["peft"], marker = "extra == 'all'" },
@@ -3130,6 +3139,7 @@ requires-dist = [
     { name = "lerobot", extras = ["pusht"], marker = "extra == 'all'" },
     { name = "lerobot", extras = ["pygame-dep"], marker = "extra == 'gamepad'" },
     { name = "lerobot", extras = ["pygame-dep"], marker = "extra == 'hopejr'" },
+    { name = "lerobot", extras = ["pygame-dep"], marker = "extra == 'nero'" },
     { name = "lerobot", extras = ["pygame-dep"], marker = "extra == 'unitree-g1'" },
     { name = "lerobot", extras = ["pynput-dep"], marker = "extra == 'hardware'" },
     { name = "lerobot", extras = ["pyserial-dep"], marker = "extra == 'dynamixel'" },
@@ -3147,6 +3157,7 @@ requires-dist = [
     { name = "lerobot", extras = ["scipy-dep"], marker = "extra == 'aloha'" },
     { name = "lerobot", extras = ["scipy-dep"], marker = "extra == 'libero'" },
     { name = "lerobot", extras = ["scipy-dep"], marker = "extra == 'metaworld'" },
+    { name = "lerobot", extras = ["scipy-dep"], marker = "extra == 'nero'" },
     { name = "lerobot", extras = ["scipy-dep"], marker = "extra == 'phone'" },
     { name = "lerobot", extras = ["scipy-dep"], marker = "extra == 'pi'" },
     { name = "lerobot", extras = ["scipy-dep"], marker = "extra == 'wallx'" },
@@ -3201,6 +3212,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=5.0.0,<8.0.0" },
     { name = "pytest-timeout", marker = "extra == 'test'", specifier = ">=2.4.0,<3.0.0" },
     { name = "python-can", marker = "extra == 'can-dep'", specifier = ">=4.2.0,<5.0.0" },
+    { name = "pytracik", marker = "extra == 'nero'", specifier = ">=0.0.3" },
     { name = "pyzmq", marker = "extra == 'pyzmq-dep'", specifier = ">=26.2.1,<28.0.0" },
     { name = "qwen-vl-utils", marker = "extra == 'qwen-vl-utils-dep'", specifier = ">=0.0.11,<0.1.0" },
     { name = "reachy2-sdk", marker = "extra == 'reachy2'", specifier = ">=1.0.15,<1.1.0" },
@@ -3227,7 +3239,7 @@ requires-dist = [
     { name = "transformers", marker = "extra == 'transformers-dep'", specifier = ">=5.4.0,<5.6.0" },
     { name = "wandb", marker = "extra == 'training'", specifier = ">=0.24.0,<0.25.0" },
 ]
-provides-extras = ["dataset", "training", "hardware", "viz", "core-scripts", "evaluation", "dataset-viz", "av-dep", "pygame-dep", "placo-dep", "transformers-dep", "grpcio-dep", "can-dep", "peft-dep", "scipy-dep", "diffusers-dep", "qwen-vl-utils-dep", "matplotlib-dep", "pyserial-dep", "deepdiff-dep", "pynput-dep", "pyzmq-dep", "feetech", "dynamixel", "damiao", "robstride", "openarms", "gamepad", "hopejr", "lekiwi", "unitree-g1", "reachy2", "kinematics", "intelrealsense", "phone", "diffusion", "wallx", "pi", "smolvla", "multi-task-dit", "groot", "sarm", "xvla", "eo1", "hilserl", "async", "peft", "dev", "notebook", "test", "video-benchmark", "aloha", "pusht", "libero", "metaworld", "all"]
+provides-extras = ["dataset", "training", "hardware", "viz", "core-scripts", "evaluation", "dataset-viz", "av-dep", "pygame-dep", "placo-dep", "transformers-dep", "grpcio-dep", "can-dep", "peft-dep", "scipy-dep", "diffusers-dep", "qwen-vl-utils-dep", "matplotlib-dep", "pyserial-dep", "deepdiff-dep", "pynput-dep", "pyzmq-dep", "feetech", "dynamixel", "damiao", "robstride", "openarms", "gamepad", "hopejr", "lekiwi", "nero", "unitree-g1", "reachy2", "kinematics", "intelrealsense", "phone", "diffusion", "wallx", "pi", "smolvla", "multi-task-dit", "groot", "sarm", "xvla", "eo1", "hilserl", "async", "peft", "dev", "notebook", "test", "video-benchmark", "aloha", "pusht", "libero", "metaworld", "all"]
 
 [[package]]
 name = "librt"
@@ -5259,6 +5271,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/86/f5/8c0653e5bb54e0cbdfe27bf32d41f27bc4e12faa8742778c17f2a71be2c0/python-xlib-0.33.tar.gz", hash = "sha256:55af7906a2c75ce6cb280a584776080602444f75815a7aff4d287bb2d7018b32", size = 269068, upload-time = "2022-12-25T18:53:00.824Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fc/b8/ff33610932e0ee81ae7f1269c890f697d56ff74b9f5b2ee5d9b7fa2c5355/python_xlib-0.33-py2.py3-none-any.whl", hash = "sha256:c3534038d42e0df2f1392a1b30a15a4ff5fdc2b86cfa94f072bf11b10a164398", size = 182185, upload-time = "2022-12-25T18:52:58.662Z" },
+]
+
+[[package]]
+name = "pytracik"
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c3/30/e14813249054ee0458347982cbe2f9a58eefc2fc7171ed9e2b01e816adb8/pytracik-0.0.3.tar.gz", hash = "sha256:ed4ac2bc59c22c2e8b6793e65adc84059393d53285f0a76825eb5901cb001e09", size = 74937, upload-time = "2026-03-08T16:52:47.396Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/db/5fdd6d58538d14c36d1f2ca1ec363ec676505ef72e1c184528413ffc0be5/pytracik-0.0.3-cp312-cp312-macosx_15_0_arm64.whl", hash = "sha256:4588f9a2bcf9139991e4d1f4e301f163846b39e2d1108f5347d65c3703fda14a", size = 5627775, upload-time = "2026-03-08T16:52:34.372Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/5c/3df50a600aae33284dde78d20850f72ad607d0ccb6c6ae4c8ace2bc4c177/pytracik-0.0.3-cp312-cp312-manylinux_2_34_x86_64.whl", hash = "sha256:7c08ae092b140bec81dcc629b6357b66ec17ccf52d4e58673f92bbb0fd05ff97", size = 998285, upload-time = "2026-03-08T16:52:36.092Z" },
+    { url = "https://files.pythonhosted.org/packages/77/47/e0e36886165f6b8df60dc193bb0051b26780c15620ee790127813979c278/pytracik-0.0.3-cp312-cp312-win_amd64.whl", hash = "sha256:22d7374c235d5614f629629d67f954eec04e04221d34e13c3baf67ba6c812394", size = 512753, upload-time = "2026-03-08T16:52:37.75Z" },
+    { url = "https://files.pythonhosted.org/packages/27/21/9b6abae852005bdd1252d6f763c01a45fa23adc02dffc7d72a9acfddcd5c/pytracik-0.0.3-cp313-cp313-macosx_15_0_arm64.whl", hash = "sha256:766ea115400853a9bfe8aaadab17b5646ce43beff067d1822384efd5c2764899", size = 5557025, upload-time = "2026-03-08T16:52:39.36Z" },
+    { url = "https://files.pythonhosted.org/packages/54/82/a8c734fe52061d7b16fa0d10d0ed4df57aa9982b390aaacaa8c05f54e44a/pytracik-0.0.3-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:d56e81d69ffc94eb576854307b280ac0280248c2b67fd3df45d4027867234453", size = 998400, upload-time = "2026-03-08T16:52:41.036Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/18/f57633083b322675080551a113b57386b35bc8025bbfc19b649acc912e68/pytracik-0.0.3-cp313-cp313-win_amd64.whl", hash = "sha256:cab9550fba0806d5ef87b1cac32787be5e620ae49cedc6cbd0c971fbdeace80f", size = 512820, upload-time = "2026-03-08T16:52:42.72Z" },
 ]
 
 [[package]]

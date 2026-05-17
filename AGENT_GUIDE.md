@@ -403,7 +403,114 @@ Single-task grasp-and-place with 50 clean episodes: ACT should reach **> 70% suc
 
 ---
 
-## 9. Further reading & resources
+## 9. Nero 7-DOF Robot (Agilex) — Quick Reference
+
+### 9.1 Install pyAgxArm SDK
+
+The Nero SDK (`pyAgxArm`) is installed as an editable package from the bundled submodule:
+
+```bash
+cd /path/to/lerobot_nero/pyAgxArm
+uv pip install -e .
+```
+
+Then install lerobot with nero extras:
+
+```bash
+uv sync --locked --extra nero
+```
+
+The `nero` extra includes: pygame, python-can, scipy, pytracik. (`pyAgxArm` must be installed separately above.)
+
+### 9.2 CAN interface setup
+
+```bash
+sudo ip link set can0 up type can bitrate 1000000
+```
+
+### 9.3 CLI commands
+
+Nero 专用脚本 (基于 LeRobot 原版, 增加 Home 复位 / E-STOP / Home 键连接):
+
+**Teleoperate (gamepad):**
+```bash
+uv run python scripts/lerobot_teleoperate_nero.py \
+  --robot.type=nero \
+  --robot.cameras='{front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}' \
+  --teleop.type=nero_gamepad \
+  --display_data=true
+```
+
+**Record a dataset (episode 间自动回 Home):**
+```bash
+uv run python scripts/lerobot_record_nero.py \
+  --robot.type=nero \
+  --robot.cameras='{front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}' \
+  --teleop.type=nero_gamepad \
+  --dataset.repo_id=<user>/<dataset> \
+  --dataset.num_episodes=50 \
+  --dataset.single_task="<describe the task>" \
+  --display_data=true
+```
+
+**也可以使用原版 CLI (无 Home 复位):**
+```bash
+lerobot-teleoperate \
+  --robot.type=nero \
+  --robot.cameras='{front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}' \
+  --teleop.type=nero_gamepad \
+  --display_data=true
+```
+
+**Evaluate a trained policy:**
+```bash
+lerobot-rollout \
+  --strategy.type=base \
+  --policy.path=<model_path> \
+  --robot.type=nero \
+  --robot.cameras='{front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}' \
+  --task="<same task description>" --duration=30
+```
+
+**Motion mode selection (CLI):**
+```bash
+# move_j — safer, reaches target precisely via joint interpolation
+lerobot-teleoperate --robot.type=nero --robot.motion_mode=j --teleop.type=nero_gamepad
+
+# move_js — faster servo response, better for real-time teleop (default)
+lerobot-teleoperate --robot.type=nero --robot.motion_mode=js --teleop.type=nero_gamepad
+```
+
+### 9.4 Test scripts
+
+```bash
+# Test connect / disconnect / is_connected
+uv run python scripts/test_nero_connect.py
+
+# Test sending home-joint action
+uv run python scripts/test_nero_send_home_action.py
+
+# Test gamepad teleop (requires Xbox controller)
+uv run python scripts/test_nero_gamepad.py
+```
+
+### 9.5 Gamepad controls
+
+| Control | Action |
+|---------|--------|
+| Left stick | End-effector X/Y translation |
+| Right stick Y | Z translation |
+| Right stick X | Z-axis rotation |
+| D-pad | X/Y rotation |
+| A button | Close gripper |
+| B button | Open gripper |
+| Y button | Go Home (episode SUCCESS) |
+| Back button | E-STOP (episode FAILURE) |
+| Home button | Connect robot |
+
+---
+
+## 10. Further reading & resources
 
 - **Getting started:** [`installation.mdx`](./docs/source/installation.mdx) · [`il_robots.mdx`](./docs/source/il_robots.mdx) · [What makes a good dataset](https://huggingface.co/blog/lerobot-datasets)
 - **Per-policy docs:** browse [`docs/source/*.mdx`](./docs/source/) (policies, hardware, benchmarks, advanced training).
