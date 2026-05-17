@@ -163,15 +163,6 @@ class Nero(Robot):
         pass
 
     def move_to_home(self) -> None:
-        """用 move_j 模式运动到 home 位置并闭合夹爪.
-
-        SDK 调用链:
-            1. arm.set_speed_percent(10)              → 设速度 10% (安全速度)
-            2. arm.set_motion_mode(MOTION_MODE.J)     → 切换到关节插补模式
-            3. arm.move_j(home_joint_angles)          → 运动到 home 关节角
-            4. effector.move_gripper_m(0.0, force)    → 闭合夹爪
-        适用于: episode 间复位、测试验证、手动回零.
-        """
         if self.arm is None:
             return
         self.arm.set_speed_percent(40)
@@ -231,7 +222,7 @@ class Nero(Robot):
             3. _clip_relative: 如配置了 max_relative_target, 限制单步最大变化量
             4. 根据运动模式下发:
                move_j 模式 (更安全, 插补到位):
-                   arm.set_speed_percent(10)              → 先设速度
+                   arm.set_speed_percent(40)              → 先设速度
                    arm.set_motion_mode(MOTION_MODE.J)     → 再设模式
                    arm.move_j(goal_joints)                → 最后下发
                move_js 模式 (更快响应, 伺服):
@@ -264,7 +255,7 @@ class Nero(Robot):
                     )
 
             if self.config.motion_mode == "j":
-                self.arm.set_speed_percent(30)
+                self.arm.set_speed_percent(40)
                 # self.arm.set_motion_mode(self.arm.OPTIONS.MOTION_MODE.J)
                 self.arm.move_j(goal_joints)
             else:
