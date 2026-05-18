@@ -14,6 +14,7 @@ class OrbbecCameraConfig(CameraConfig):
     enable_depth: bool = False
     auto_exposure: bool = True
     auto_white_balance: bool = True
+    serial_number: str | None = None
 
     def __post_init__(self) -> None:
         self.color_mode = ColorMode(self.color_mode)

@@ -48,7 +48,8 @@ class OrbbecCamera(Camera):
                 self.capture_width, self.capture_height = self.height, self.width
 
     def __str__(self) -> str:
-        return f"OrbbecCamera()"
+        sn = self.config.serial_number or "default"
+        return f"OrbbecCamera(SN={sn})"
 
     @property
     def is_connected(self) -> bool:
@@ -75,7 +76,20 @@ class OrbbecCamera(Camera):
 
     @check_if_already_connected
     def connect(self, warmup: bool = True) -> None:
-        self.pipeline = pyorbbecsdk.Pipeline()
+        if self.config.serial_number:
+            ctx = pyorbbecsdk.Context()
+            device_list = ctx.query_devices()
+            device = None
+            for i in range(device_list.get_count()):
+                dev = device_list.get_device_by_index(i)
+                if dev.get_device_info().get_serial_number() == self.config.serial_number:
+                    device = dev
+                    break
+            if device is None:
+                raise ConnectionError(f"Orbbec device SN={self.config.serial_number} not found")
+            self.pipeline = pyorbbecsdk.Pipeline(device)
+        else:
+            self.pipeline = pyorbbecsdk.Pipeline()
         self.device = self.pipeline.get_device()
 
         self._configure_device()
