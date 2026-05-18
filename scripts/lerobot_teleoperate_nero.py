@@ -33,6 +33,11 @@ Usage:
     uv run python scripts/lerobot_teleoperate_nero.py \
         --robot.type=nero --teleop.type=nero_gamepad \
         --display_data=true
+
+    # With Orbbec camera + live display:
+    uv run python scripts/lerobot_teleoperate_nero.py \
+        --robot.type=nero --teleop.type=nero_gamepad \
+        --use_orbbec_camera=true --display_cameras=true
 """
 
 import logging
@@ -41,7 +46,11 @@ import time
 from dataclasses import asdict, dataclass
 from pprint import pformat
 
+import cv2
+import numpy as np
 from lerobot.cameras.opencv import OpenCVCameraConfig  # noqa: F401
+from lerobot.cameras.orbbec import OrbbecCameraConfig  # noqa: F401
+from lerobot.cameras.configs import ColorMode
 from lerobot.configs import parser
 from lerobot.robots import Robot, RobotConfig, make_robot_from_config, nero  # noqa: F401
 from lerobot.robots.nero import Nero
@@ -68,6 +77,8 @@ class NeroTeleoperateConfig:
     fps: int = 30
     teleop_time_s: float | None = None
     display_data: bool = False
+    display_cameras: bool = False
+    use_orbbec_camera: bool = False
     display_ip: str | None = None
     display_port: int | None = None
     display_compressed_images: bool = False
@@ -105,6 +116,7 @@ def nero_teleop_loop(
     robot: Nero,
     fps: int,
     display_data: bool = False,
+    display_cameras: bool = False,
     duration: float | None = None,
     display_compressed_images: bool = False,
 ):
@@ -129,7 +141,7 @@ def nero_teleop_loop(
             going_home = True
             robot.move_to_home()
             _sync_ik_from_robot(teleop, robot)
-            teleop.gripper_state = 0.0
+            teleop.gripper_state = 100.0
             logger.info(f"Home done. IK joints: {[f'{v:.4f}' for v in teleop.get_joint_angles()]}")
             logger.info(f"Home done. Config home: {[f'{v:.4f}' for v in teleop.config.home_joint_angles]}")
             going_home = False
@@ -176,6 +188,19 @@ def nero_teleop_loop(
 
         robot.send_action(action)
 
+        if display_cameras and robot.cameras:
+            for cam_name, cam in robot.cameras.items():
+                try:
+                    frame = cam.read_latest(max_age_ms=2000)
+                    if frame is not None:
+                        frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                        cv2.imshow(f"Nero - {cam_name}", frame_bgr)
+                except (TimeoutError, RuntimeError):
+                    pass
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                logger.info("Quit from camera window")
+                return
+
         if display_data:
             robot.get_observation()
             print("\n" + "-" * (display_len + 10))
@@ -197,6 +222,15 @@ def nero_teleop_loop(
 @parser.wrap()
 def teleoperate(cfg: NeroTeleoperateConfig):
     init_logging()
+
+    if cfg.use_orbbec_camera:
+        cfg.robot.cameras["top"] = OrbbecCameraConfig(
+            fps=30, width=1280, height=720,
+            color_mode=ColorMode.RGB, warmup_s=2,
+            auto_exposure=True, auto_white_balance=True,
+        )
+        logger.info("Orbbec camera attached as 'top'")
+
     logging.info(pformat(asdict(cfg)))
 
     _init_can()
@@ -223,12 +257,15 @@ def teleoperate(cfg: NeroTeleoperateConfig):
             robot=robot,
             fps=cfg.fps,
             display_data=cfg.display_data,
+            display_cameras=cfg.display_cameras,
             duration=cfg.teleop_time_s,
             display_compressed_images=display_compressed_images,
         )
     except KeyboardInterrupt:
         pass
     finally:
+        if cfg.display_cameras:
+            cv2.destroyAllWindows()
         if cfg.display_data:
             shutdown_rerun()
         teleop.disconnect()

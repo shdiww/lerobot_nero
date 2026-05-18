@@ -165,11 +165,23 @@ class Nero(Robot):
     def move_to_home(self) -> None:
         if self.arm is None:
             return
-        self.arm.set_speed_percent(40)
+        self.arm.set_speed_percent(20)
         self.arm.set_motion_mode(self.arm.OPTIONS.MOTION_MODE.J)
         self.arm.move_j(self.config.home_joint_angles)
+        self._wait_joints_at_target(self.config.home_joint_angles, timeout=15.0)
         if self.config.use_gripper and self.effector is not None:
-            self.effector.move_gripper_m(value=0.0, force=self.config.gripper_force)
+            self.effector.move_gripper_m(value=NERO_GRIPPER_MAX_WIDTH_M, force=self.config.gripper_force)
+        if self.config.motion_mode == "js":
+            self.arm.set_motion_mode(self.arm.OPTIONS.MOTION_MODE.JS)
+
+    def _wait_joints_at_target(self, target: list[float], timeout: float = 10.0) -> None:
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < timeout:
+            ja = self.arm.get_joint_angles()
+            if ja is not None:
+                if all(abs(ja.msg[i] - target[i]) < 0.05 for i in range(len(target))):
+                    return
+            time.sleep(0.05)
 
     def configure(self) -> None:
         """允许 SDK 自动切换运动模式.

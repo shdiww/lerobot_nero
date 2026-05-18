@@ -140,7 +140,7 @@ class NeroGamepadController:
 
             cfg = self.config
             sf = cfg.speed_factor
-            delta_x = -left_y * cfg.x_step_size * sf
+            delta_x = left_y * cfg.x_step_size * sf
             delta_y = left_x * cfg.y_step_size * sf
             delta_z = -right_y * cfg.z_step_size * sf
             delta_wx = hat[0] * cfg.wx_step_size * sf

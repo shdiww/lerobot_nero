@@ -1,51 +1,75 @@
 #!/usr/bin/env python
-"""Nero 专用数据采集脚本 — 基于 lerobot_record, 增加 Nero 特有逻辑.
+"""Nero 专用数据采集脚本.
 
-与原版 lerobot-record 的区别:
-    1. 限定 --robot.type=nero, --teleop.type=nero_gamepad
-    2. 每个 episode 结束后自动调用 robot.move_to_home() 回到起始位置
-    3. reset 窗口期间仍可手柄控制, 但不录制数据
-    4. E-STOP (Back 键) 触发时回 Home 再断开
-    5. Y 键标记 SUCCESS 并回 Home
+基于遥操作脚本，增加 LeRobot 数据集录制功能。
+
+数据流:
+    Xbox 手柄摇杆/按键
+        │
+        ▼
+    NeroGamepad.get_action() → deltas
+        │
+        ▼
+    teleop.solve_ik_from_deltas() → joint_angles
+        │
+        ▼
+    拼装 action: {"joint1.pos": ..., "gripper.pos": ...}
+        │
+        ├──→ robot.send_action(action)
+        │
+        └──→ dataset.add_frame({
+                "observation.state": [j1...j7, gripper],
+                "observation.images.top": image,
+                "action": [j1...j7, gripper],
+                "task": single_task,
+             })
+
+按键:
+    L-stick  → 末端 X/Y 平移
+    R-stick  → 末端 Z 平移 / Z 旋转
+    D-pad    → 末端 X/Y 旋转
+    A        → 夹爪闭合
+    B        → 夹爪张开
+    Y        → 回 Home 位置
+    Back     → E-STOP
+    Home     → 连接机械臂
+    → (右箭头) → 提前结束当前 episode
+    ← (左箭头) → 重录当前 episode
+    Esc      → 停止所有录制
 
 Usage:
     uv run python scripts/lerobot_record_nero.py \
-        --robot.cameras='{front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}' \
-        --dataset.repo_id=<user>/<dataset> \
+        --robot.type=nero --teleop.type=nero_gamepad \
+        --use_orbbec_camera=true \
+        --display_cameras=true \
+        --dataset.repo_id=nero_pick_cup \
         --dataset.num_episodes=50 \
-        --dataset.single_task="Pick up the cup" \
-        --display_data=true
+        --dataset.single_task="pick up the cup"
 """
 
 import logging
+import os
 import time
 from dataclasses import asdict, dataclass
 from pprint import pformat
 
-from lerobot.cameras import CameraConfig  # noqa: F401
+import cv2
+import numpy as np
+from lerobot.cameras.configs import ColorMode
 from lerobot.cameras.opencv import OpenCVCameraConfig  # noqa: F401
-from lerobot.common.control_utils import (
-    init_keyboard_listener,
-    is_headless,
-    sanity_check_dataset_robot_compatibility,
-)
+from lerobot.cameras.orbbec import OrbbecCameraConfig  # noqa: F401
+from lerobot.common.control_utils import init_keyboard_listener, is_headless
 from lerobot.configs import parser
 from lerobot.configs.dataset import DatasetRecordConfig
-from lerobot.datasets import (
-    LeRobotDataset,
-    VideoEncodingManager,
+from lerobot.datasets import LeRobotDataset, VideoEncodingManager
+from lerobot.datasets.pipeline_features import (
     aggregate_pipeline_dataset_features,
     create_initial_features,
-    safe_stop_image_writer,
 )
-from lerobot.processor import (
-    RobotAction,
-    RobotObservation,
-    RobotProcessorPipeline,
-    make_default_processors,
-)
+from lerobot.processor import make_default_processors
 from lerobot.robots import Robot, RobotConfig, make_robot_from_config, nero  # noqa: F401
-from lerobot.robots.nero import Nero, NeroRobotConfig
+from lerobot.robots.nero import Nero
+from lerobot.robots.nero.config_nero import NERO_GRIPPER_MAX_WIDTH_M, NERO_JOINT_NAMES
 from lerobot.teleoperators import (  # noqa: F401
     Teleoperator,
     TeleoperatorConfig,
@@ -57,8 +81,7 @@ from lerobot.teleoperators.utils import TeleopEvents
 from lerobot.utils.constants import ACTION, OBS_STR
 from lerobot.utils.feature_utils import build_dataset_frame, combine_feature_dicts
 from lerobot.utils.robot_utils import precise_sleep
-from lerobot.utils.utils import init_logging, log_say
-from lerobot.utils.visualization_utils import init_rerun, log_rerun_data
+from lerobot.utils.utils import init_logging
 
 logger = logging.getLogger(__name__)
 
@@ -66,131 +89,197 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NeroRecordConfig:
     robot: RobotConfig
+    teleop: TeleoperatorConfig
     dataset: DatasetRecordConfig
-    teleop: TeleoperatorConfig | None = None
+    fps: int = 30
+    use_orbbec_camera: bool = False
+    display_cameras: bool = False
     display_data: bool = False
-    display_ip: str | None = None
-    display_port: int | None = None
-    display_compressed_images: bool = False
-    play_sounds: bool = True
     resume: bool = False
-    go_home_between_episodes: bool = True
-
-    def __post_init__(self):
-        if self.teleop is None:
-            raise ValueError(
-                "A teleoperator is required for recording. "
-                "Use --teleop.type=nero_gamepad to specify one."
-            )
 
 
-@safe_stop_image_writer
-def nero_record_loop(
+def _init_can():
+    os.system("sudo ip link set can0 up type can bitrate 1000000 2>/dev/null")
+    logger.info("CAN bus initialized (can0, 1Mbps)")
+
+
+def _sync_ik_from_robot(teleop: NeroGamepad, robot: Nero, retries: int = 10) -> None:
+    if teleop.ik_solver is None:
+        return
+
+    actual_joints = None
+    for attempt in range(retries):
+        obs = robot.get_observation()
+        if all(f"{name}.pos" in obs for name in NERO_JOINT_NAMES):
+            actual_joints = [obs[f"{name}.pos"] for name in NERO_JOINT_NAMES]
+            break
+        logger.warning(f"get_observation missing joint data (attempt {attempt + 1}/{retries}), retrying...")
+        time.sleep(0.5)
+
+    if actual_joints is None:
+        logger.warning("Failed to read joint angles from robot, falling back to home")
+        actual_joints = list(teleop.config.home_joint_angles)
+
+    teleop.set_joint_angles(actual_joints)
+    teleop.ik_solver.set_seed(actual_joints)
+    logger.info(f"IK synced to joints: {[f'{v:.3f}' for v in actual_joints]}")
+
+
+def record_episode_loop(
+    teleop: NeroGamepad,
     robot: Nero,
-    events: dict,
     fps: int,
-    teleop_action_processor: RobotProcessorPipeline,
-    robot_action_processor: RobotProcessorPipeline,
-    robot_observation_processor: RobotProcessorPipeline,
+    events: dict,
     dataset: LeRobotDataset | None = None,
-    teleop: NeroGamepad | None = None,
-    control_time_s: int | None = None,
+    control_time_s: float | None = None,
     single_task: str | None = None,
-    display_data: bool = False,
-    display_compressed_images: bool = False,
+    display_cameras: bool = False,
 ):
-    if dataset is not None and dataset.fps != fps:
-        raise ValueError(f"The dataset fps should be equal to requested fps ({dataset.fps} != {fps}).")
-
     control_interval = 1 / fps
-    timestamp = 0
     start_episode_t = time.perf_counter()
+    timestamp = 0.0
+    going_home = False
 
-    while timestamp < control_time_s:
-        start_loop_t = time.perf_counter()
+    while timestamp < (control_time_s or float("inf")):
+        loop_start = time.perf_counter()
 
         if events["exit_early"]:
             events["exit_early"] = False
             break
 
-        obs = robot.get_observation()
-        obs_processed = robot_observation_processor(obs)
+        if events["stop_recording"]:
+            break
 
-        if dataset is not None:
-            observation_frame = build_dataset_frame(dataset.features, obs_processed, prefix=OBS_STR)
+        raw_action = teleop.get_action()
+        teleop_events = teleop.get_teleop_events()
 
-        if teleop is not None:
-            act = teleop.get_action()
-            act_processed_teleop = teleop_action_processor((act, obs))
-            action_values = act_processed_teleop
-            robot_action_to_send = robot_action_processor((act_processed_teleop, obs))
-        else:
+        if teleop_events.get(TeleopEvents.SUCCESS):
+            logger.info("Y pressed — moving to Home position")
+            going_home = True
+            robot.move_to_home()
+            _sync_ik_from_robot(teleop, robot)
+            teleop.gripper_state = 100.0
+            going_home = False
             continue
 
-        _sent_action = robot.send_action(robot_action_to_send)
+        if teleop_events.get(TeleopEvents.TERMINATE_EPISODE):
+            logger.info("Back pressed — E-STOP, moving to Home then disconnecting")
+            robot.move_to_home()
+            events["stop_recording"] = True
+            break
+
+        if teleop.is_home_requested():
+            logger.info("Home button pressed — reconnecting robot")
+            if not robot.is_connected:
+                robot.connect()
+                _sync_ik_from_robot(teleop, robot)
+
+        if going_home:
+            dt_s = time.perf_counter() - loop_start
+            precise_sleep(max(control_interval - dt_s, 0.0))
+            timestamp = time.perf_counter() - start_episode_t
+            continue
+
+        delta_x = raw_action["delta_x"]
+        delta_y = raw_action["delta_y"]
+        delta_z = raw_action["delta_z"]
+        delta_wx = raw_action["delta_wx"]
+        delta_wy = raw_action["delta_wy"]
+        delta_wz = raw_action["delta_wz"]
+        delta_gripper = raw_action.get("delta_gripper", 0.0)
+
+        has_input = any(v != 0.0 for v in (delta_x, delta_y, delta_z, delta_wx, delta_wy, delta_wz))
+
+        if has_input:
+            teleop.solve_ik_from_deltas(delta_x, delta_y, delta_z, delta_wx, delta_wy, delta_wz)
+
+        if delta_gripper != 0.0:
+            teleop.update_gripper_state(delta_gripper)
+
+        action = {}
+        for name, val in zip(NERO_JOINT_NAMES, teleop.get_joint_angles(), strict=True):
+            action[f"{name}.pos"] = val
+
+        if teleop.config.use_gripper:
+            action["gripper.pos"] = NERO_GRIPPER_MAX_WIDTH_M * teleop.gripper_state * 1e-2
+
+        robot.send_action(action)
 
         if dataset is not None:
-            action_frame = build_dataset_frame(dataset.features, action_values, prefix=ACTION)
+            obs = robot.get_observation()
+
+            observation_frame = build_dataset_frame(dataset.features, obs, prefix=OBS_STR)
+            action_frame = build_dataset_frame(dataset.features, action, prefix=ACTION)
             frame = {**observation_frame, **action_frame, "task": single_task}
             dataset.add_frame(frame)
 
-        if display_data:
-            log_rerun_data(
-                observation=obs_processed, action=action_values, compress_images=display_compressed_images
-            )
+        if display_cameras and robot.cameras:
+            for cam_name, cam in robot.cameras.items():
+                try:
+                    frame_img = cam.read_latest(max_age_ms=2000)
+                    if frame_img is not None:
+                        frame_bgr = cv2.cvtColor(frame_img, cv2.COLOR_RGB2BGR)
+                        cv2.imshow(f"Nero - {cam_name}", frame_bgr)
+                except (TimeoutError, RuntimeError):
+                    pass
+            cv2.waitKey(1)
 
-        dt_s = time.perf_counter() - start_loop_t
-        sleep_time_s: float = control_interval - dt_s
+        dt_s = time.perf_counter() - loop_start
+        sleep_time_s = control_interval - dt_s
         if sleep_time_s < 0:
-            logging.warning(
-                f"Record loop is running slower ({1 / dt_s:.1f} Hz) than the target FPS ({fps} Hz)."
+            logger.warning(
+                f"Record loop running at {1/dt_s:.1f} Hz, target {fps} Hz. "
+                "Consider reducing camera resolution or fps."
             )
         precise_sleep(max(sleep_time_s, 0.0))
+
         timestamp = time.perf_counter() - start_episode_t
+        loop_s = time.perf_counter() - loop_start
+        print(f"Record loop: {loop_s * 1e3:.1f}ms ({1 / loop_s:.0f} Hz) | ep: {timestamp:.1f}s / {control_time_s}s")
+        move_cursor_up(1)
+
+
+def move_cursor_up(n: int):
+    print(f"\033[{n}A", end="")
 
 
 @parser.wrap()
-def record(
-    cfg: NeroRecordConfig,
-    teleop_action_processor: RobotProcessorPipeline | None = None,
-    robot_action_processor: RobotProcessorPipeline | None = None,
-    robot_observation_processor: RobotProcessorPipeline | None = None,
-) -> LeRobotDataset:
+def record(cfg: NeroRecordConfig):
     init_logging()
+
+    if cfg.use_orbbec_camera:
+        cfg.robot.cameras["top"] = OrbbecCameraConfig(
+            fps=30, width=1280, height=720,
+            color_mode=ColorMode.RGB, warmup_s=2,
+            auto_exposure=True, auto_white_balance=True,
+        )
+        logger.info("Orbbec camera attached as 'top'")
+
+    cfg.robot.motion_mode = "js"
+    logger.info("Motion mode forced to 'js' (servo mode) for teleoperation")
+
     logging.info(pformat(asdict(cfg)))
-    if cfg.display_data:
-        init_rerun(session_name="nero_recording", ip=cfg.display_ip, port=cfg.display_port)
-    display_compressed_images = (
-        True
-        if (cfg.display_data and cfg.display_ip is not None and cfg.display_port is not None)
-        else cfg.display_compressed_images
-    )
+
+    _init_can()
 
     robot = make_robot_from_config(cfg.robot)
-    teleop = make_teleoperator_from_config(cfg.teleop) if cfg.teleop is not None else None
+    teleop = make_teleoperator_from_config(cfg.teleop)
 
-    if (
-        teleop_action_processor is None
-        or robot_action_processor is None
-        or robot_observation_processor is None
-    ):
-        _t, _r, _o = make_default_processors()
-        teleop_action_processor = teleop_action_processor or _t
-        robot_action_processor = robot_action_processor or _r
-        robot_observation_processor = robot_observation_processor or _o
-
+    _t, _r, _o = make_default_processors()
     dataset_features = combine_feature_dicts(
         aggregate_pipeline_dataset_features(
-            pipeline=teleop_action_processor,
+            pipeline=_t,
             initial_features=create_initial_features(action=robot.action_features),
             use_videos=cfg.dataset.video,
         ),
         aggregate_pipeline_dataset_features(
-            pipeline=robot_observation_processor,
+            pipeline=_o,
             initial_features=create_initial_features(observation=robot.observation_features),
             use_videos=cfg.dataset.video,
         ),
     )
+
+    logger.info(f"Dataset features: {dataset_features}")
 
     dataset = None
     listener = None
@@ -207,18 +296,9 @@ def record(
                 encoder_queue_maxsize=cfg.dataset.encoder_queue_maxsize,
                 encoder_threads=cfg.dataset.encoder_threads,
                 image_writer_processes=cfg.dataset.num_image_writer_processes if num_cameras > 0 else 0,
-                image_writer_threads=cfg.dataset.num_image_writer_threads_per_camera * num_cameras
-                if num_cameras > 0
-                else 0,
+                image_writer_threads=cfg.dataset.num_image_writer_threads_per_camera * num_cameras if num_cameras > 0 else 0,
             )
-            sanity_check_dataset_robot_compatibility(dataset, robot, cfg.dataset.fps, dataset_features)
         else:
-            repo_name = cfg.dataset.repo_id.split("/", 1)[-1]
-            if repo_name.startswith("eval_"):
-                raise ValueError(
-                    "Dataset names starting with 'eval_' are reserved for policy evaluation. "
-                    "Use lerobot-rollout for policy deployment."
-                )
             cfg.dataset.stamp_repo_id()
             dataset = LeRobotDataset.create(
                 cfg.dataset.repo_id,
@@ -236,63 +316,49 @@ def record(
                 encoder_threads=cfg.dataset.encoder_threads,
             )
 
+        logger.info(f"Dataset: {cfg.dataset.repo_id}, episodes: {dataset.num_episodes}, frames: {dataset.num_frames}")
+
+        teleop.connect()
         robot.connect()
-        if teleop is not None:
-            teleop.connect()
+        _sync_ik_from_robot(teleop, robot)
 
         listener, events = init_keyboard_listener()
 
-        if not cfg.dataset.streaming_encoding:
-            logging.info(
-                "Streaming encoding is disabled. Consider enabling it for faster episode saving. "
-                "--dataset.streaming_encoding=true --dataset.encoder_threads=2"
-            )
+        if not is_headless() and cfg.display_cameras:
+            logger.info("Camera display enabled. Press 'q' in camera window or Esc to stop.")
 
         with VideoEncodingManager(dataset):
             recorded_episodes = 0
             while recorded_episodes < cfg.dataset.num_episodes and not events["stop_recording"]:
-                log_say(f"Recording episode {dataset.num_episodes}", cfg.play_sounds)
-                nero_record_loop(
-                    robot=robot,
-                    events=events,
-                    fps=cfg.dataset.fps,
-                    teleop_action_processor=teleop_action_processor,
-                    robot_action_processor=robot_action_processor,
-                    robot_observation_processor=robot_observation_processor,
+                logger.info(f"=== Recording episode {recorded_episodes + 1}/{cfg.dataset.num_episodes} ===")
+
+                record_episode_loop(
                     teleop=teleop,
+                    robot=robot,
+                    fps=cfg.dataset.fps,
+                    events=events,
                     dataset=dataset,
                     control_time_s=cfg.dataset.episode_time_s,
                     single_task=cfg.dataset.single_task,
-                    display_data=cfg.display_data,
-                    display_compressed_images=display_compressed_images,
+                    display_cameras=cfg.display_cameras,
                 )
 
-                # Episode 结束后自动回 Home 位置
-                if cfg.go_home_between_episodes and not events["stop_recording"]:
-                    log_say("Going home", cfg.play_sounds)
-                    robot.move_to_home()
-                    time.sleep(1.0)
-
-                # Reset 窗口: 手柄可控但不录制
                 if not events["stop_recording"] and (
-                    (recorded_episodes < cfg.dataset.num_episodes - 1) or events["rerecord_episode"]
+                    recorded_episodes < cfg.dataset.num_episodes - 1 or events["rerecord_episode"]
                 ):
-                    log_say("Reset the environment", cfg.play_sounds)
-                    nero_record_loop(
-                        robot=robot,
-                        events=events,
-                        fps=cfg.dataset.fps,
-                        teleop_action_processor=teleop_action_processor,
-                        robot_action_processor=robot_action_processor,
-                        robot_observation_processor=robot_observation_processor,
+                    logger.info(f"--- Reset phase ({cfg.dataset.reset_time_s}s) ---")
+                    record_episode_loop(
                         teleop=teleop,
+                        robot=robot,
+                        fps=cfg.dataset.fps,
+                        events=events,
+                        dataset=None,
                         control_time_s=cfg.dataset.reset_time_s,
-                        single_task=cfg.dataset.single_task,
-                        display_data=cfg.display_data,
+                        display_cameras=cfg.display_cameras,
                     )
 
                 if events["rerecord_episode"]:
-                    log_say("Re-record episode", cfg.play_sounds)
+                    logger.info("Re-recording episode...")
                     events["rerecord_episode"] = False
                     events["exit_early"] = False
                     dataset.clear_episode_buffer()
@@ -300,28 +366,30 @@ def record(
 
                 dataset.save_episode()
                 recorded_episodes += 1
-    finally:
-        log_say("Stop recording", cfg.play_sounds, blocking=True)
+                logger.info(f"Episode {recorded_episodes} saved. Total: {dataset.num_episodes}")
 
-        if dataset:
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user.")
+    finally:
+        logger.info("Finalizing dataset...")
+
+        if dataset is not None:
             dataset.finalize()
 
         if robot.is_connected:
             robot.disconnect()
-        if teleop and teleop.is_connected:
+        if teleop.is_connected:
             teleop.disconnect()
 
-        if not is_headless() and listener:
+        if not is_headless() and listener is not None:
             listener.stop()
 
-        if cfg.dataset.push_to_hub:
-            if dataset and dataset.num_episodes > 0:
-                dataset.push_to_hub(tags=cfg.dataset.tags, private=cfg.dataset.private)
-            else:
-                logging.warning("No episodes saved — skipping push to hub")
+        if cfg.display_cameras:
+            cv2.destroyAllWindows()
 
-        log_say("Exiting", cfg.play_sounds)
-    return dataset
+        if dataset is not None:
+            logger.info(f"Dataset saved: {dataset.num_episodes} episodes, {dataset.num_frames} frames")
+            logger.info(f"Location: {dataset.root}")
 
 
 def main():
