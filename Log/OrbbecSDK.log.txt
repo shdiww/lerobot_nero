@@ -2124,3 +2124,136 @@
 [05/18 10:55:46.655568][info][198748][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done
 [05/18 10:55:46.655580][info][198748][ObLibuvcDevicePort.cpp:87] uvc_close done.
 [05/18 10:55:46.655582][info][198748][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done
+[05/18 11:21:56.040904][info][210575][LinuxUsbPal.cpp:335] Create PollingDeviceWatcher!
+[05/18 11:21:56.040932][info][210575][DeviceManager.cpp:25] Current found device(s): (1)
+[05/18 11:21:56.040935][info][210575][DeviceManager.cpp:34] 	- Name: FemtoBolt, PID: 0x066b, SN/ID: CL87B530020, Connection: USB3.1
+[05/18 11:21:56.040938][info][210575][DeviceManager.cpp:339] Enable net device enumeration: true
+[05/18 11:21:58.044331][info][210575][DeviceManager.cpp:25] Current device(s) list: (1)
+[05/18 11:21:58.044362][info][210575][DeviceManager.cpp:34] 	- Name: FemtoBolt, PID: 0x066b, SN/ID: CL87B530020, Connection: USB3.1
+[05/18 11:21:58.387309][info][210575][DeviceManager.cpp:194] Device created successfully! Name: Femto Bolt, PID: 0x066b, SN/ID: CL87B530020 FW: 1.0.9
+[05/18 11:21:58.387352][info][210575][Pipeline.cpp:42] [CL87B530020] Pipeline created with device: {name: Femto Bolt, sn: CL87B530020}, @0x48E86E00
+[05/18 11:21:58.389710][info][210575][Pipeline.cpp:216] [CL87B530020] Check and set config done!
+[05/18 11:21:58.389723][info][210575][Pipeline.cpp:254] [CL87B530020] Try to start streams!
+[05/18 11:21:58.389727][info][210575][VideoSensor.cpp:58] [CL87B530020] Try to start stream: {type: Color, format: RGB, width: 1280, height: 720, fps: 30}
+[05/18 11:21:58.389730][info][210575][SensorBase.cpp:213] [CL87B530020] Stream state changed to STARTING@Color
+[05/18 11:21:58.389734][info][210575][VideoSensor.cpp:127] [CL87B530020] Start backend stream: {type: Color, format: MJPG, width: 1280, height: 720, fps: 30}
+[05/18 11:21:58.390932][info][210575][Pipeline.cpp:270] [CL87B530020] Start streams done!
+[05/18 11:21:58.390939][info][210575][Pipeline.cpp:238] [CL87B530020] Pipeline start done!
+[05/18 11:21:59.244274][info][210727][SensorBase.cpp:213] [CL87B530020] Stream state changed to STREAMING@Color
+[05/18 11:22:04.267655][info][210727][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.260801fps
+[05/18 11:22:04.270249][info][210748][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.254776fps
+[05/18 11:22:09.292032][info][210727][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.049751fps
+[05/18 11:22:09.294395][info][210748][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:22:12.089983][info][210575][Pipeline.cpp:336] [CL87B530020] Try to stop pipeline!
+[05/18 11:22:12.090020][info][210575][Pipeline.cpp:312] [CL87B530020] Try to stop streams!
+[05/18 11:22:12.090037][info][210575][SensorBase.cpp:213] [CL87B530020] Stream state changed to STOPPING@Color
+[05/18 11:22:14.025366][info][210575][SensorBase.cpp:213] [CL87B530020] Stream state changed to STOPPED@Color
+[05/18 11:22:14.025449][info][210575][Pipeline.cpp:326] [CL87B530020] Sensor stream stopped, sensorType=Color
+[05/18 11:22:14.025451][info][210575][Pipeline.cpp:332] [CL87B530020] Stop streams done!
+[05/18 11:22:14.025460][info][210575][Pipeline.cpp:356] [CL87B530020] Stop pipeline done!
+[05/18 11:22:14.025475][info][210575][Pipeline.cpp:53] [CL87B530020] Pipeline destroyed! @0x48E86E00
+[05/18 11:22:14.025529][info][210575][SensorBase.cpp:47] [CL87B530020] SensorBase is destroyed
+[05/18 11:22:14.025573][info][210575][ObLibuvcDevicePort.cpp:87] uvc_close done.
+[05/18 11:22:14.025575][info][210575][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done
+[05/18 11:22:14.025590][info][210575][ObLibuvcDevicePort.cpp:87] uvc_close done.
+[05/18 11:22:14.025591][info][210575][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done
+[05/18 11:23:36.548984][info][211482][LinuxUsbPal.cpp:335] Create PollingDeviceWatcher!
+[05/18 11:23:36.549015][info][211482][DeviceManager.cpp:25] Current found device(s): (1)
+[05/18 11:23:36.549018][info][211482][DeviceManager.cpp:34] 	- Name: FemtoBolt, PID: 0x066b, SN/ID: CL87B530020, Connection: USB3.1
+[05/18 11:23:36.549020][info][211482][DeviceManager.cpp:339] Enable net device enumeration: true
+[05/18 11:23:38.552945][info][211482][DeviceManager.cpp:25] Current device(s) list: (1)
+[05/18 11:23:38.552974][info][211482][DeviceManager.cpp:34] 	- Name: FemtoBolt, PID: 0x066b, SN/ID: CL87B530020, Connection: USB3.1
+[05/18 11:23:38.895354][info][211482][DeviceManager.cpp:194] Device created successfully! Name: Femto Bolt, PID: 0x066b, SN/ID: CL87B530020 FW: 1.0.9
+[05/18 11:23:38.895416][info][211482][Pipeline.cpp:42] [CL87B530020] Pipeline created with device: {name: Femto Bolt, sn: CL87B530020}, @0x17412E50
+[05/18 11:23:38.897648][info][211482][Pipeline.cpp:216] [CL87B530020] Check and set config done!
+[05/18 11:23:38.897660][info][211482][Pipeline.cpp:254] [CL87B530020] Try to start streams!
+[05/18 11:23:38.897663][info][211482][VideoSensor.cpp:58] [CL87B530020] Try to start stream: {type: Color, format: RGB, width: 1280, height: 720, fps: 30}
+[05/18 11:23:38.897666][info][211482][SensorBase.cpp:213] [CL87B530020] Stream state changed to STARTING@Color
+[05/18 11:23:38.897669][info][211482][VideoSensor.cpp:127] [CL87B530020] Start backend stream: {type: Color, format: MJPG, width: 1280, height: 720, fps: 30}
+[05/18 11:23:38.898703][info][211482][Pipeline.cpp:270] [CL87B530020] Start streams done!
+[05/18 11:23:38.898710][info][211482][Pipeline.cpp:238] [CL87B530020] Pipeline start done!
+[05/18 11:23:39.760507][info][211589][SensorBase.cpp:213] [CL87B530020] Stream state changed to STREAMING@Color
+[05/18 11:23:44.783552][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.260801fps
+[05/18 11:23:44.785741][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.266827fps
+[05/18 11:23:49.807478][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:23:49.809769][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:23:54.831524][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:23:54.833712][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:23:59.855312][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:23:59.857657][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:04.879300][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:24:04.881618][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:09.903218][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:24:09.905460][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:14.926925][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.061718fps
+[05/18 11:24:14.929618][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:19.950819][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:24:19.953056][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:24.974016][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:24:24.976304][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.061718fps
+[05/18 11:24:29.997406][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.061718fps
+[05/18 11:24:29.999800][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.061718fps
+[05/18 11:24:35.020892][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.061718fps
+[05/18 11:24:35.023338][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:40.044977][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:24:40.047216][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:45.069532][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.049751fps
+[05/18 11:24:45.071721][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:50.092742][info][211589][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.061718fps
+[05/18 11:24:50.095405][info][211594][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:24:53.323091][info][211482][Pipeline.cpp:336] [CL87B530020] Try to stop pipeline!
+[05/18 11:24:53.323118][info][211482][Pipeline.cpp:312] [CL87B530020] Try to stop streams!
+[05/18 11:24:53.323131][info][211482][SensorBase.cpp:213] [CL87B530020] Stream state changed to STOPPING@Color
+[05/18 11:24:55.263576][info][211482][SensorBase.cpp:213] [CL87B530020] Stream state changed to STOPPED@Color
+[05/18 11:24:55.263659][info][211482][Pipeline.cpp:326] [CL87B530020] Sensor stream stopped, sensorType=Color
+[05/18 11:24:55.263663][info][211482][Pipeline.cpp:332] [CL87B530020] Stop streams done!
+[05/18 11:24:55.263674][info][211482][Pipeline.cpp:356] [CL87B530020] Stop pipeline done!
+[05/18 11:24:55.263691][info][211482][Pipeline.cpp:53] [CL87B530020] Pipeline destroyed! @0x17412E50
+[05/18 11:24:55.263765][info][211482][SensorBase.cpp:47] [CL87B530020] SensorBase is destroyed
+[05/18 11:24:55.263829][info][211482][ObLibuvcDevicePort.cpp:87] uvc_close done.
+[05/18 11:24:55.263832][info][211482][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done
+[05/18 11:24:55.263851][info][211482][ObLibuvcDevicePort.cpp:87] uvc_close done.
+[05/18 11:24:55.263853][info][211482][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done
+[05/18 11:26:22.370229][info][214287][LinuxUsbPal.cpp:335] Create PollingDeviceWatcher!
+[05/18 11:26:22.370269][info][214287][DeviceManager.cpp:25] Current found device(s): (1)
+[05/18 11:26:22.370272][info][214287][DeviceManager.cpp:34] 	- Name: FemtoBolt, PID: 0x066b, SN/ID: CL87B530020, Connection: USB3.1
+[05/18 11:26:22.370275][info][214287][DeviceManager.cpp:339] Enable net device enumeration: true
+[05/18 11:26:24.374345][info][214287][DeviceManager.cpp:25] Current device(s) list: (1)
+[05/18 11:26:24.374373][info][214287][DeviceManager.cpp:34] 	- Name: FemtoBolt, PID: 0x066b, SN/ID: CL87B530020, Connection: USB3.1
+[05/18 11:26:24.717284][info][214287][DeviceManager.cpp:194] Device created successfully! Name: Femto Bolt, PID: 0x066b, SN/ID: CL87B530020 FW: 1.0.9
+[05/18 11:26:24.717315][info][214287][Pipeline.cpp:42] [CL87B530020] Pipeline created with device: {name: Femto Bolt, sn: CL87B530020}, @0x1CADAC50
+[05/18 11:26:24.719734][info][214287][Pipeline.cpp:216] [CL87B530020] Check and set config done!
+[05/18 11:26:24.719753][info][214287][Pipeline.cpp:254] [CL87B530020] Try to start streams!
+[05/18 11:26:24.719756][info][214287][VideoSensor.cpp:58] [CL87B530020] Try to start stream: {type: Color, format: RGB, width: 1280, height: 720, fps: 30}
+[05/18 11:26:24.719760][info][214287][SensorBase.cpp:213] [CL87B530020] Stream state changed to STARTING@Color
+[05/18 11:26:24.719764][info][214287][VideoSensor.cpp:127] [CL87B530020] Start backend stream: {type: Color, format: MJPG, width: 1280, height: 720, fps: 30}
+[05/18 11:26:24.721288][info][214287][Pipeline.cpp:270] [CL87B530020] Start streams done!
+[05/18 11:26:24.721300][info][214287][Pipeline.cpp:238] [CL87B530020] Pipeline start done!
+[05/18 11:26:25.584165][info][214385][SensorBase.cpp:213] [CL87B530020] Stream state changed to STREAMING@Color
+[05/18 11:26:30.607609][info][214385][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.260801fps
+[05/18 11:26:30.609862][info][214389][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.266827fps
+[05/18 11:26:35.632217][info][214385][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.049751fps
+[05/18 11:26:35.634431][info][214389][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.049751fps
+[05/18 11:26:40.656702][info][214385][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:26:40.659722][info][214389][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.049751fps
+[05/18 11:26:45.680711][info][214385][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:26:45.682986][info][214389][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.061718fps
+[05/18 11:26:50.704801][info][214385][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:26:50.707310][info][214389][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.049751fps
+[05/18 11:26:55.728845][info][214385][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.055731fps
+[05/18 11:26:55.731357][info][214389][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:27:00.753049][info][214385][VideoSensor.cpp:153] [CL87B530020] Color backend frame callback, frameRate=30.049751fps
+[05/18 11:27:00.755302][info][214389][SensorBase.cpp:370] [CL87B530020] Color Streaming... frameRate=30.055731fps
+[05/18 11:27:05.313900][info][214287][Pipeline.cpp:336] [CL87B530020] Try to stop pipeline!
+[05/18 11:27:05.313927][info][214287][Pipeline.cpp:312] [CL87B530020] Try to stop streams!
+[05/18 11:27:05.313940][info][214287][SensorBase.cpp:213] [CL87B530020] Stream state changed to STOPPING@Color
+[05/18 11:27:07.292089][info][214287][SensorBase.cpp:213] [CL87B530020] Stream state changed to STOPPED@Color
+[05/18 11:27:07.292165][info][214287][Pipeline.cpp:326] [CL87B530020] Sensor stream stopped, sensorType=Color
+[05/18 11:27:07.292167][info][214287][Pipeline.cpp:332] [CL87B530020] Stop streams done!
+[05/18 11:27:07.292175][info][214287][Pipeline.cpp:356] [CL87B530020] Stop pipeline done!
+[05/18 11:27:07.292189][info][214287][Pipeline.cpp:53] [CL87B530020] Pipeline destroyed! @0x1CADAC50
+[05/18 11:27:07.292243][info][214287][SensorBase.cpp:47] [CL87B530020] SensorBase is destroyed
+[05/18 11:27:07.292286][info][214287][ObLibuvcDevicePort.cpp:87] uvc_close done.
+[05/18 11:27:07.292289][info][214287][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done
+[05/18 11:27:07.292301][info][214287][ObLibuvcDevicePort.cpp:87] uvc_close done.
+[05/18 11:27:07.292302][info][214287][ObLibuvcDevicePort.cpp:88] ~ObLibuvcDevicePort done

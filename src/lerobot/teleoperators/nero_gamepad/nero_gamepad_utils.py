@@ -25,6 +25,8 @@ class NeroGamepadController:
         self.open_gripper_command = False
         self.close_gripper_command = False
         self.home_requested = False
+        self.start_pressed = False
+        self.back_pressed = False
 
         self.button_map = {
             "a": 0, "b": 1, "x": 2, "y": 3,
@@ -55,7 +57,9 @@ class NeroGamepadController:
         logger.info("  D-pad: X/Y rotation")
         logger.info("  A: Close gripper")
         logger.info("  B: Open gripper")
-        logger.info("  Y: Go Home (episode SUCCESS)")
+        logger.info("  Y: Go Home")
+        logger.info("  Start: Begin recording")
+        logger.info("  Back: End recording / E-STOP")
         logger.info("  Home: Connect robot (script-level)")
 
     def _poll_for_joystick(self, timeout: float = 10.0):
@@ -115,7 +119,9 @@ class NeroGamepadController:
                     if name == "y":
                         self.episode_end_status = TeleopEvents.SUCCESS
                     elif name == "back":
-                        self.episode_end_status = TeleopEvents.FAILURE
+                        self.back_pressed = True
+                    elif name == "start":
+                        self.start_pressed = True
                     elif name == "home":
                         self.home_requested = True
                 self._prev_buttons[name] = current
@@ -169,6 +175,16 @@ class NeroGamepadController:
         requested = self.home_requested
         self.home_requested = False
         return requested
+
+    def is_start_pressed(self):
+        pressed = self.start_pressed
+        self.start_pressed = False
+        return pressed
+
+    def is_back_pressed(self):
+        pressed = self.back_pressed
+        self.back_pressed = False
+        return pressed
 
     def _apply_deadzone(self, value: float) -> float:
         return value if abs(value) > self.config.deadzone else 0.0

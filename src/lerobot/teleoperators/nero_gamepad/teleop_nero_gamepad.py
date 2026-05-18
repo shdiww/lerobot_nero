@@ -192,6 +192,16 @@ class NeroGamepad(Teleoperator):
             return False
         return self.controller.is_home_requested()
 
+    def is_start_pressed(self) -> bool:
+        if self.controller is None:
+            return False
+        return self.controller.is_start_pressed()
+
+    def is_back_pressed(self) -> bool:
+        if self.controller is None:
+            return False
+        return self.controller.is_back_pressed()
+
     def set_joint_angles(self, joint_angles: list[float] | np.ndarray) -> None:
         self._joint_angles = np.asarray(joint_angles, dtype=np.float64).copy()
         self._ema_joint_angles = self._joint_angles.copy()
