@@ -42,6 +42,14 @@ class NeroGamepadController:
 
         self._prev_buttons = dict.fromkeys(self.button_map, False)
 
+    def clear_all_events(self):
+        self.episode_end_status = None
+        self.start_pressed = False
+        self.back_pressed = False
+        self.home_requested = False
+        self.open_gripper_command = False
+        self.close_gripper_command = False
+
     def start(self):
         pygame.init()
         pygame.joystick.init()
@@ -110,12 +118,16 @@ class NeroGamepadController:
             return
 
         try:
+            num_btns = self.joystick.get_numbuttons()
             for name, btn_id in self.button_map.items():
-                if btn_id >= self.joystick.get_numbuttons():
+                if btn_id >= num_btns:
+                    if name in ("start", "back", "home"):
+                        print(f"\n[GAMEPAD] Button '{name}' (id={btn_id}) >= numbuttons={num_btns}, SKIPPED!")
                     continue
                 current = bool(self.joystick.get_button(btn_id))
                 prev = self._prev_buttons.get(name, False)
                 if current and not prev:
+                    print(f"\n[GAMEPAD] Button pressed: {name} (id={btn_id})")
                     if name == "y":
                         self.episode_end_status = TeleopEvents.SUCCESS
                     elif name == "back":

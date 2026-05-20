@@ -80,10 +80,13 @@ class Nero(Robot):
 
     @property
     def _cameras_ft(self) -> dict[str, tuple]:
-        return {
-            cam: (self.config.cameras[cam].height, self.config.cameras[cam].width, 3)
-            for cam in self.cameras
-        }
+        result = {}
+        for cam in self.cameras:
+            cam_cfg = self.config.cameras[cam]
+            h = getattr(cam_cfg, "crop_height", None) or cam_cfg.height
+            w = getattr(cam_cfg, "crop_width", None) or cam_cfg.width
+            result[cam] = (h, w, 3)
+        return result
 
     @cached_property
     def observation_features(self) -> dict[str, type | tuple]:
@@ -254,7 +257,7 @@ class Nero(Robot):
         for name in NERO_JOINT_NAMES:
             key = f"{name}.pos"
             if key in action:
-                goal_joints.append(action[key])
+                goal_joints.append(float(action[key]))
 
         if len(goal_joints) == len(NERO_JOINT_NAMES):
             goal_joints = _clamp_joints(goal_joints, NERO_JOINT_LIMITS_RAD)

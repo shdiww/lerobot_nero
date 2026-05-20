@@ -15,6 +15,10 @@ class OrbbecCameraConfig(CameraConfig):
     auto_exposure: bool = True
     auto_white_balance: bool = True
     serial_number: str | None = None
+    crop_width: int | None = None
+    crop_height: int | None = None
+    crop_x_offset: int | None = None
+    crop_y_offset: int | None = None
 
     def __post_init__(self) -> None:
         self.color_mode = ColorMode(self.color_mode)

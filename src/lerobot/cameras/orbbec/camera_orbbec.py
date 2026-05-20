@@ -204,6 +204,13 @@ class OrbbecCamera(Camera):
         if self.rotation in [cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_180]:
             processed = cv2.rotate(processed, self.rotation)
 
+        if self.config.crop_width and self.config.crop_height:
+            h, w = processed.shape[:2]
+            crop_h, crop_w = self.config.crop_height, self.config.crop_width
+            y0 = self.config.crop_y_offset if self.config.crop_y_offset is not None else (h - crop_h) // 2
+            x0 = self.config.crop_x_offset if self.config.crop_x_offset is not None else (w - crop_w) // 2
+            processed = processed[y0:y0+crop_h, x0:x0+crop_w]
+
         return processed
 
     def _read_loop(self) -> None:
