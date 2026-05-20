@@ -72,7 +72,7 @@ from lerobot.utils.utils import init_logging
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_DEFAULT_DATASET_ROOT = str(_PROJECT_ROOT / "datasets")
+_DEFAULT_DATASET_ROOT = str(Path.home() / "nero_data" / "dataset")
 
 
 @dataclass
