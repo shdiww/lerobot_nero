@@ -5,6 +5,9 @@
 #   NeroConfig      — 用户面向的配置 dataclass（CAN、运动模式、夹爪等）
 #   NeroRobotConfig — 合并 RobotConfig + NeroConfig，注册为 "nero" 子类型
 #                     使 CLI 可用 --robot.type=nero
+from lerobot.cameras.orbbec.configuration_orbbec import OrbbecCameraConfig  # noqa: F401 — ensure "orbbec" is registered
+from lerobot.cameras.realsense.configuration_realsense import RealSenseCameraConfig  # noqa: F401 — ensure "intelrealsense" is registered
+
 from .config_nero import NeroConfig, NeroRobotConfig
 from .nero import Nero
 
