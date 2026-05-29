@@ -47,6 +47,7 @@ from lerobot.utils.feature_utils import dataset_to_policy_features
 from .act.configuration_act import ACTConfig
 from .diffusion.configuration_diffusion import DiffusionConfig
 from .eo1.configuration_eo1 import EO1Config
+from .flow_matching.configuration_flow_matching import FlowMatchingConfig
 from .gaussian_actor.configuration_gaussian_actor import GaussianActorConfig
 from .groot.configuration_groot import GrootConfig
 from .multi_task_dit.configuration_multi_task_dit import MultiTaskDiTConfig
@@ -103,6 +104,10 @@ def get_policy_class(name: str) -> type[PreTrainedPolicy]:
         from .diffusion.modeling_diffusion import DiffusionPolicy
 
         return DiffusionPolicy
+    elif name == "flow_matching":
+        from .flow_matching.modeling_flow_matching import FlowMatchingPolicy
+
+        return FlowMatchingPolicy
     elif name == "act":
         from .act.modeling_act import ACTPolicy
 
@@ -181,6 +186,8 @@ def make_policy_config(policy_type: str, **kwargs) -> PreTrainedConfig:
         return TDMPCConfig(**kwargs)
     elif policy_type == "diffusion":
         return DiffusionConfig(**kwargs)
+    elif policy_type == "flow_matching":
+        return FlowMatchingConfig(**kwargs)
     elif policy_type == "act":
         return ACTConfig(**kwargs)
     elif policy_type == "multi_task_dit":
@@ -319,6 +326,14 @@ def make_pre_post_processors(
         from .diffusion.processor_diffusion import make_diffusion_pre_post_processors
 
         processors = make_diffusion_pre_post_processors(
+            config=policy_cfg,
+            dataset_stats=kwargs.get("dataset_stats"),
+        )
+
+    elif isinstance(policy_cfg, FlowMatchingConfig):
+        from .flow_matching.processor_flow_matching import make_flow_matching_pre_post_processors
+
+        processors = make_flow_matching_pre_post_processors(
             config=policy_cfg,
             dataset_stats=kwargs.get("dataset_stats"),
         )
