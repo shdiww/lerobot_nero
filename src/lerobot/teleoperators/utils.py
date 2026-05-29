@@ -103,6 +103,10 @@ def make_teleoperator_from_config(config: TeleoperatorConfig) -> "Teleoperator":
         from .nero_gamepad import NeroGamepad
 
         return NeroGamepad(config)
+    elif config.type == "pico_vr":
+        from .pico_vr import NeroPicoVR
+
+        return NeroPicoVR(config)
     else:
         try:
             return cast("Teleoperator", make_device_from_device_class(config))
