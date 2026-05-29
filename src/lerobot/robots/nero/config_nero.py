@@ -36,7 +36,7 @@ _NERO_HOME_JOINTS_PATH = NERO_DIR / "home_joints.json"
 with open(_NERO_HOME_JOINTS_PATH) as _f:
     NERO_HOME_JOINT_ANGLES = json.load(_f)["home_joints_rad"]
 
-NERO_GRIPPER_MAX_WIDTH_M = 0.07
+NERO_GRIPPER_MAX_WIDTH_M = 0.08
 
 
 @dataclass
