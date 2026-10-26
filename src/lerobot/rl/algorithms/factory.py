@@ -51,7 +51,7 @@ def get_algorithm_class(name: str) -> type[RLAlgorithm]:
     memory at once, improving startup time and reducing dependencies.
 
     Args:
-        name: The name of the algorithm. Supported names are "sac".
+        name: The name of the algorithm. Supported names are "sac" and "td3".
 
     Returns:
         The algorithm class corresponding to the given name.
@@ -63,6 +63,10 @@ def get_algorithm_class(name: str) -> type[RLAlgorithm]:
         from .sac.sac_algorithm import SACAlgorithm
 
         return SACAlgorithm
+    if name == "td3":
+        from .td3.td3_algorithm import TD3Algorithm
+
+        return TD3Algorithm
     raise ValueError(
         f"Algorithm type '{name}' is not available. "
         f"Known: {list(RLAlgorithmConfig.get_known_choices().keys())}"

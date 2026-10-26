@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from lerobot.datasets import LeRobotDatasetMetadata
 
 from lerobot.configs import FeatureType, PreTrainedConfig
+from lerobot.configs.types import PolicyFeature
 from lerobot.envs import EnvConfig, env_to_policy_features
 from lerobot.processor import (
     AbsoluteActionsProcessorStep,
@@ -55,6 +56,7 @@ from .pi0.configuration_pi0 import PI0Config
 from .pi05.configuration_pi05 import PI05Config
 from .pretrained import PreTrainedPolicy
 from .smolvla.configuration_smolvla import SmolVLAConfig
+from .td3_actor.configuration_td3_actor import OBS_BASE_ACTION, TD3ActorConfig
 from .tdmpc.configuration_tdmpc import TDMPCConfig
 from .utils import validate_visual_features_consistency
 from .vqbet.configuration_vqbet import VQBeTConfig
@@ -136,6 +138,10 @@ def get_policy_class(name: str) -> type[PreTrainedPolicy]:
         from .gaussian_actor.modeling_gaussian_actor import GaussianActorPolicy
 
         return GaussianActorPolicy
+    elif name == "td3_actor":
+        from .td3_actor.modeling_td3_actor import TD3ActorPolicy
+
+        return TD3ActorPolicy
     elif name == "smolvla":
         from .smolvla.modeling_smolvla import SmolVLAPolicy
 
@@ -200,6 +206,8 @@ def make_policy_config(policy_type: str, **kwargs) -> PreTrainedConfig:
         return PI05Config(**kwargs)
     elif policy_type == "gaussian_actor":
         return GaussianActorConfig(**kwargs)
+    elif policy_type == "td3_actor":
+        return TD3ActorConfig(**kwargs)
     elif policy_type == "smolvla":
         return SmolVLAConfig(**kwargs)
     elif policy_type == "groot":
@@ -388,6 +396,14 @@ def make_pre_post_processors(
             dataset_stats=kwargs.get("dataset_stats"),
         )
 
+    elif isinstance(policy_cfg, TD3ActorConfig):
+        from .td3_actor.processor_td3_actor import make_td3_actor_pre_post_processors
+
+        processors = make_td3_actor_pre_post_processors(
+            config=policy_cfg,
+            dataset_stats=kwargs.get("dataset_stats"),
+        )
+
     elif isinstance(policy_cfg, SmolVLAConfig):
         from .smolvla.processor_smolvla import make_smolvla_pre_post_processors
 
@@ -508,6 +524,19 @@ def make_policy(
     cfg.output_features = {key: ft for key, ft in features.items() if ft.type is FeatureType.ACTION}
     if not cfg.input_features:
         cfg.input_features = {key: ft for key, ft in features.items() if key not in cfg.output_features}
+
+    # The residual TD3 actor consumes the frozen base policy's action through
+    # ``observation.base_action``; the environment-side wrapper injects it at
+    # rollout time, so derive the feature from the action feature here.
+    if (
+        isinstance(cfg, TD3ActorConfig)
+        and cfg.residual
+        and OBS_BASE_ACTION not in cfg.input_features
+        and ACTION in cfg.output_features
+    ):
+        cfg.input_features[OBS_BASE_ACTION] = PolicyFeature(
+            type=FeatureType.STATE, shape=cfg.output_features[ACTION].shape
+        )
 
     # Store action feature names for relative_exclude_joints support
     if ds_meta is not None and hasattr(cfg, "action_feature_names"):

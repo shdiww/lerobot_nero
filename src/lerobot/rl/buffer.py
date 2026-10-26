@@ -25,6 +25,7 @@ import torch.nn.functional as F  # noqa: N812
 from tqdm import tqdm
 
 from lerobot.datasets import LeRobotDataset
+from lerobot.policies.td3_actor.configuration_td3_actor import OBS_BASE_ACTION
 from lerobot.utils.constants import ACTION, DONE, OBS_IMAGE, REWARD
 from lerobot.utils.transition import Transition
 
@@ -418,6 +419,7 @@ class ReplayBuffer:
         use_drq: bool = True,
         storage_device: str = "cpu",
         optimize_memory: bool = False,
+        base_action_fn: Callable | None = None,
     ) -> "ReplayBuffer":
         """
         Convert a LeRobotDataset into a ReplayBuffer.
@@ -433,6 +435,12 @@ class ReplayBuffer:
             use_drq (bool): Whether to use DrQ image augmentation when sampling.
             storage_device (str): Device for storing tensor data. Using "cpu" saves GPU memory.
             optimize_memory (bool): If True, reduces memory usage by not duplicating state data.
+            base_action_fn (Callable | None): Labels states with the frozen base policy's
+                action (residual RL). Called per dataset frame, must return a (action_dim,)
+                tensor in the normalized [-1, 1] action space; needs a ``reset()`` method to
+                reset chunked base policies at episode boundaries. Required when
+                ``observation.base_action`` is in ``state_keys`` (see
+                ``lerobot.rl.base_policy_wrapper.make_base_action_labeler``).
 
         Returns:
             ReplayBuffer: The replay buffer with dataset transitions.
@@ -457,7 +465,9 @@ class ReplayBuffer:
         )
 
         # Convert dataset to transitions
-        list_transition = cls._lerobotdataset_to_transitions(dataset=lerobot_dataset, state_keys=state_keys)
+        list_transition = cls._lerobotdataset_to_transitions(
+            dataset=lerobot_dataset, state_keys=state_keys, base_action_fn=base_action_fn
+        )
 
         # Initialize the buffer with the first transition to set up storage tensors
         if list_transition:
@@ -611,6 +621,7 @@ class ReplayBuffer:
     def _lerobotdataset_to_transitions(
         dataset: LeRobotDataset,
         state_keys: Sequence[str] | None = None,
+        base_action_fn: Callable | None = None,
     ) -> list[Transition]:
         """
         Convert a LeRobotDataset into a list of RL (s, a, r, s', done) transitions.
@@ -632,6 +643,15 @@ class ReplayBuffer:
                 will be kept as-is in the output transitions. E.g.
                 ["observation.state", "observation.environment_state"].
                 If None, you must handle or define default keys.
+                ``observation.base_action`` is allowed: it is not read from the
+                dataset but labeled per frame with ``base_action_fn``.
+
+            base_action_fn (Callable | None):
+                Labels each frame with the frozen base policy's action (residual RL).
+                Called with the raw dataset sample, must return a (action_dim,)
+                tensor in the normalized [-1, 1] action space. If it exposes a
+                ``reset()`` method, it is called at episode boundaries so chunked
+                base policies (e.g. ACT) do not carry state across episodes.
 
         Returns:
             transitions (list[Transition]):
@@ -639,6 +659,19 @@ class ReplayBuffer:
         """
         if state_keys is None:
             raise ValueError("State keys must be provided when converting LeRobotDataset to Transitions.")
+
+        # Residual RL: `observation.base_action` is synthesized, not a dataset column
+        base_action_key = None
+        dataset_state_keys = list(state_keys)
+        if OBS_BASE_ACTION in dataset_state_keys:
+            if base_action_fn is None:
+                raise ValueError(
+                    f"'{OBS_BASE_ACTION}' is in state_keys but no base_action_fn was provided. "
+                    "Residual RL requires labeling demonstration states with the frozen base "
+                    "policy (see lerobot.rl.base_policy_wrapper.make_base_action_labeler)."
+                )
+            base_action_key = OBS_BASE_ACTION
+            dataset_state_keys = [k for k in dataset_state_keys if k != OBS_BASE_ACTION]
 
         transitions = []
         num_frames = len(dataset)
@@ -655,14 +688,34 @@ class ReplayBuffer:
         if not has_done_key:
             print("'next.done' key not found in dataset. Inferring from episode boundaries...")
 
+        last_episode_index = None
+        base_cache: dict[int, torch.Tensor] = {}
+
         for i in tqdm(range(num_frames)):
             current_sample = dataset[i]
 
+            # Reset chunked base policies at episode boundaries and drop the
+            # next-state base actions cached for the previous episode.
+            if (
+                base_action_key is not None
+                and last_episode_index is not None
+                and current_sample["episode_index"] != last_episode_index
+            ):
+                if hasattr(base_action_fn, "reset"):
+                    base_action_fn.reset()
+                base_cache.clear()
+
             # ----- 1) Current state -----
             current_state: dict[str, torch.Tensor] = {}
-            for key in state_keys:
+            for key in dataset_state_keys:
                 val = current_sample[key]
                 current_state[key] = val.unsqueeze(0)  # Add batch dimension
+            if base_action_key is not None:
+                current_base = base_cache.pop(i, None)
+                if current_base is None:
+                    current_base = base_action_fn(current_sample)
+                current_state[base_action_key] = current_base.unsqueeze(0)
+                last_episode_index = current_sample["episode_index"]
 
             # ----- 2) Action -----
             action = current_sample[ACTION].unsqueeze(0)  # Add batch dimension
@@ -690,15 +743,31 @@ class ReplayBuffer:
             # If not done and the next sample is in the same episode, we pull the next sample's state.
             # Otherwise (done=True or next sample crosses to a new episode), next_state = current_state.
             next_state = current_state  # default
-            if not done and (i < num_frames - 1):
+            same_episode_next = not done and (i < num_frames - 1)
+            if same_episode_next:
                 next_sample = dataset[i + 1]
                 if next_sample["episode_index"] == current_sample["episode_index"]:
                     # Build next_state from the same keys
                     next_state_data: dict[str, torch.Tensor] = {}
-                    for key in state_keys:
+                    for key in dataset_state_keys:
                         val = next_sample[key]
                         next_state_data[key] = val.unsqueeze(0)  # Add batch dimension
+                    if base_action_key is not None:
+                        next_base = base_cache.pop(i + 1, None)
+                        if next_base is None:
+                            next_base = base_action_fn(next_sample)
+                            base_cache[i + 1] = next_base
+                        next_state_data[base_action_key] = next_base.unsqueeze(0)
                     next_state = next_state_data
+                else:
+                    same_episode_next = False
+            if base_action_key is not None and not same_episode_next:
+                # Terminal (or episode-crossing) next states get a zero base
+                # action: they are never bootstraged from (done=1), matching the
+                # padding used at rollout time. Copy first: the default
+                # `next_state is current_state` must not be mutated.
+                next_state = dict(next_state)
+                next_state[base_action_key] = torch.zeros_like(current_state[base_action_key])
 
             # ----- 5) Complementary info (if available) -----
             complementary_info = None

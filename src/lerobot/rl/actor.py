@@ -105,6 +105,7 @@ from lerobot.utils.utils import (
 
 from .algorithms.base import RLAlgorithm
 from .algorithms.factory import make_algorithm
+from .base_policy_wrapper import wrap_env_with_base_policy
 from .gym_manipulator import (
     make_processors,
     make_robot_env,
@@ -267,6 +268,12 @@ def act_with_policy(
 
     torch.backends.cudnn.benchmark = True
     torch.backends.cuda.matmul.allow_tf32 = True
+
+    # Residual TD3: wrap the env so every observation carries the frozen base
+    # policy's action as ``observation.base_action`` (the residual policy
+    # combines base + residual itself, so the actor loop is unchanged).
+    if getattr(cfg.policy, "residual", False) and getattr(cfg.policy, "base_policy_path", None):
+        online_env = wrap_env_with_base_policy(online_env, policy_cfg=cfg.policy, device=device)
 
     logging.info("make_policy")
 

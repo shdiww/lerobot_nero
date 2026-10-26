@@ -854,6 +854,19 @@ def initialize_offline_replay_buffer(
             root=dataset_offline_path,
         )
 
+    # Residual TD3: label every demonstration state with the frozen base
+    # policy's action so offline transitions match online ones (which carry
+    # `observation.base_action` from the actor-side env wrapper).
+    base_action_fn = None
+    if getattr(cfg.policy, "residual", False) and getattr(cfg.policy, "base_policy_path", None):
+        from .base_policy_wrapper import make_base_action_labeler
+
+        base_action_fn = make_base_action_labeler(
+            cfg.policy.base_policy_path,
+            dataset_stats=cfg.policy.dataset_stats,
+            device=device,
+        )
+
     logging.info("Convert to a offline replay buffer")
     offline_replay_buffer = ReplayBuffer.from_lerobot_dataset(
         offline_dataset,
@@ -862,6 +875,7 @@ def initialize_offline_replay_buffer(
         storage_device=storage_device,
         optimize_memory=True,
         capacity=cfg.policy.offline_buffer_capacity,
+        base_action_fn=base_action_fn,
     )
     return offline_replay_buffer
 

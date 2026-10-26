@@ -13,8 +13,11 @@
 # limitations under the License.
 
 from .sac import SACAlgorithm, SACAlgorithmConfig
+from .td3 import TD3Algorithm, TD3AlgorithmConfig
 
 __all__ = [
     "SACAlgorithm",
     "SACAlgorithmConfig",
+    "TD3Algorithm",
+    "TD3AlgorithmConfig",
 ]

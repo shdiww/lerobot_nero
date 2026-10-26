@@ -24,6 +24,7 @@ from lerobot.configs.train import TrainPipelineConfig
 from .algorithms.configs import RLAlgorithmConfig
 from .algorithms.factory import make_algorithm_config
 from .algorithms.sac import SACAlgorithmConfig  # noqa: F401
+from .algorithms.td3 import TD3AlgorithmConfig  # noqa: F401
 
 
 @dataclass(kw_only=True)
