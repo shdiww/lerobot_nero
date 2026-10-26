@@ -260,6 +260,28 @@ class InverseKinematicsConfig:
 
 
 @dataclass
+class EefPoseControlConfig:
+    """Nero absolute-EEF-pose action space (10-dim: xyz + 6D rotation + gripper).
+
+    Installs FK on the observation side (joint state -> EEF state) and seeded,
+    per-step clamped IK on the action side (EEF action -> joint targets), using
+    the exact conventions of the EEF-pose recording / deployment scripts
+    (``nero_eef_utils``). Policies trained on EEF-pose datasets (e.g. a
+    flow-matching base for residual RL) then match the env natively.
+    """
+
+    # Defaults to the Nero URDF shipped in the package
+    urdf_path: str | None = None
+    base_link_name: str = "base_link"
+    target_link_name: str = "gripper_base"
+    gripper_motor_name: str = "gripper"
+    # TracIK timeout per solve, seconds
+    ik_timeout_s: float = 0.005
+    # Per-step clamp on commanded joint changes (rad), for smoothness/safety
+    max_joint_step: float = 0.15
+
+
+@dataclass
 class ObservationConfig:
     """Configuration for observation processing."""
 
@@ -297,7 +319,16 @@ class HILSerlProcessorConfig:
     gripper: GripperConfig | None = None
     reset: ResetConfig | None = None
     inverse_kinematics: InverseKinematicsConfig | None = None
+    # Absolute-EEF-pose action space (Nero): FK on obs, seeded clamped IK on
+    # actions. Mutually exclusive with ``inverse_kinematics``.
+    eef_pose_control: EefPoseControlConfig | None = None
     reward_classifier: RewardClassifierConfig | None = None
+    # Manually label each episode's success as a binary reward from the actor
+    # terminal at episode end (ResFiT-style human labeling). The actor blocks
+    # until the label is given, then pushes transitions, refreshes policy
+    # weights and starts the next episode. Mutually exclusive with a configured
+    # reward classifier; without either, per-step rewards stay 0.
+    manual_episode_reward: bool = False
     max_gripper_pos: float | None = 100.0
 
 

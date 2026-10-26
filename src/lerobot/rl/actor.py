@@ -49,7 +49,7 @@ https://github.com/michel-aractingi/lerobot-hilserl-guide
 import logging
 import os
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from functools import lru_cache
 from queue import Empty
 from typing import TYPE_CHECKING, Any
@@ -391,6 +391,14 @@ def act_with_policy(
         transition = new_transition
 
         if done or truncated:
+            # Manual episode labeling (ResFiT-style): block on terminal input
+            # before logging, pushing transitions and refreshing policy weights.
+            processor_cfg = getattr(cfg.env, "processor", None)
+            if processor_cfg is not None and getattr(processor_cfg, "manual_episode_reward", False):
+                manual_reward = prompt_episode_reward()
+                apply_manual_episode_reward(list_transition_to_send_to_learner, manual_reward)
+                sum_reward_episode += manual_reward
+
             logging.info(f"[ACTOR] Global step {interaction_step}: Episode reward: {sum_reward_episode}")
 
             update_policy_parameters(algorithm=algorithm, parameters_queue=parameters_queue, device=device)
@@ -434,6 +442,29 @@ def act_with_policy(
         if cfg.env.fps is not None:
             dt_time = time.perf_counter() - start_time
             precise_sleep(max(1 / cfg.env.fps - dt_time, 0.0))
+
+
+def prompt_episode_reward(input_fn: Callable[[str], str] = input) -> float:
+    """Blocking terminal prompt for the episode's binary success label.
+
+    ResFiT-style human labeling: the actor waits until a valid 0/1 label is
+    given before pushing transitions, refreshing policy weights and starting
+    the next episode.
+    """
+    while True:
+        raw = input_fn("[ACTOR] Episode ended. Success? (1/0, also y/n): ").strip().lower()
+        if raw in ("1", "y", "yes"):
+            return 1.0
+        if raw in ("0", "n", "no"):
+            return 0.0
+        logging.warning(f"[ACTOR] Unrecognized episode label '{raw}'; expected 1 or 0 (y/n).")
+
+
+def apply_manual_episode_reward(transitions: list, success: float) -> None:
+    """Write the human-given binary reward onto the episode's terminal transition."""
+    if not transitions:
+        return
+    transitions[-1]["reward"] = float(success)
 
 
 #  Communication Functions - Group all gRPC/messaging functions

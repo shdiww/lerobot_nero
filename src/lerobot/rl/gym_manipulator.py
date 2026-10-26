@@ -419,7 +419,48 @@ def make_processors(
             joint_names=motor_names,
         )
 
+    # Nero absolute-EEF-pose action space: FK on observations, seeded clamped
+    # IK on actions (same conventions as the EEF-pose record/deploy scripts).
+    eef_pose_control = cfg.processor.eef_pose_control
+    eef_adapter = None
+    arm_joint_names: list[str] = []
+    eef_gripper_key = "gripper.pos"
+    if eef_pose_control is not None:
+        if cfg.processor.inverse_kinematics is not None:
+            raise ValueError(
+                "eef_pose_control and inverse_kinematics are mutually exclusive; pick one action space"
+            )
+        from lerobot.robots.nero.eef_utils import create_eef_ik_adapter
+
+        eef_adapter = create_eef_ik_adapter(
+            urdf_path=eef_pose_control.urdf_path,
+            base_link_name=eef_pose_control.base_link_name,
+            target_link_name=eef_pose_control.target_link_name,
+            timeout=eef_pose_control.ik_timeout_s,
+        )
+        if eef_adapter is None:
+            raise ValueError(
+                "eef_pose_control is configured but the TracIK solver could not be created; "
+                "check the URDF path and the tracik installation"
+            )
+        arm_joint_names = [n for n in motor_names if n != eef_pose_control.gripper_motor_name]
+        eef_gripper_key = f"{eef_pose_control.gripper_motor_name}.pos"
+
     env_pipeline_steps = [VanillaObservationProcessorStep()]
+
+    if eef_adapter is not None:
+        from lerobot.robots.nero.nero_eef_processor import NeroEefObservationProcessorStep
+
+        # FK must run BEFORE the vanilla step: it rewrites `agent_pos`, which
+        # VanillaObservationProcessorStep then maps to `observation.state`.
+        env_pipeline_steps.insert(
+            0,
+            NeroEefObservationProcessorStep(
+                adapter=eef_adapter,
+                arm_joint_names=arm_joint_names,
+                gripper_key=eef_gripper_key,
+            ),
+        )
 
     if cfg.processor.observation is not None:
         if cfg.processor.observation.add_joint_velocity_to_observation:
@@ -470,6 +511,11 @@ def make_processors(
         cfg.processor.reward_classifier is not None
         and cfg.processor.reward_classifier.pretrained_path is not None
     ):
+        if cfg.processor.manual_episode_reward:
+            raise ValueError(
+                "Both a reward classifier and manual_episode_reward are configured; "
+                "pick one reward source."
+            )
         env_pipeline_steps.append(
             RewardClassifierProcessorStep(
                 pretrained_path=cfg.processor.reward_classifier.pretrained_path,
@@ -521,6 +567,19 @@ def make_processors(
         ]
         action_pipeline_steps.extend(inverse_kinematics_steps)
         action_pipeline_steps.append(RobotActionToPolicyActionProcessorStep(motor_names=motor_names))
+
+    if eef_adapter is not None:
+        from lerobot.robots.nero.nero_eef_processor import NeroEefActionToJointsProcessorStep
+
+        action_pipeline_steps.append(
+            NeroEefActionToJointsProcessorStep(
+                adapter=eef_adapter,
+                arm_joint_names=arm_joint_names,
+                motor_names=motor_names,
+                gripper_key=eef_gripper_key,
+                max_joint_step=eef_pose_control.max_joint_step,
+            )
+        )
 
     return DataProcessorPipeline(
         steps=env_pipeline_steps, to_transition=identity_transition, to_output=identity_transition
