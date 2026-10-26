@@ -49,6 +49,7 @@ class NeroConfig:
     max_relative_target: float | dict[str, float] | None = None
     use_gripper: bool = True
     gripper_force: float = 1.0
+    home_speed_percent: int = 10
     home_joint_angles: list[float] = field(default_factory=lambda: list(NERO_HOME_JOINT_ANGLES))
     cameras: dict[str, CameraConfig] = field(default_factory=dict)
 

@@ -168,10 +168,10 @@ class Nero(Robot):
     def move_to_home(self) -> None:
         if self.arm is None:
             return
-        self.arm.set_speed_percent(20)
+        self.arm.set_speed_percent(self.config.home_speed_percent)
         self.arm.set_motion_mode(self.arm.OPTIONS.MOTION_MODE.J)
         self.arm.move_j(self.config.home_joint_angles)
-        self._wait_joints_at_target(self.config.home_joint_angles, timeout=15.0)
+        self._wait_joints_at_target(self.config.home_joint_angles, timeout=30.0)
         if self.config.use_gripper and self.effector is not None:
             self.effector.move_gripper_m(value=NERO_GRIPPER_MAX_WIDTH_M, force=self.config.gripper_force)
         if self.config.motion_mode == "js":

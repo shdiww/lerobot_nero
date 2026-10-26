@@ -76,6 +76,27 @@ class OrbbecCamera(Camera):
 
     @check_if_already_connected
     def connect(self, warmup: bool = True) -> None:
+        self._open_pipeline()
+
+        self._start_read_thread()
+
+        if warmup and self.warmup_s > 0:
+            start_time = time.time()
+            while time.time() - start_time < self.warmup_s:
+                try:
+                    self.async_read(timeout_ms=self.warmup_s * 1000)
+                except TimeoutError:
+                    pass
+                time.sleep(0.1)
+            with self.frame_lock:
+                if self.latest_frame is None:
+                    self._cleanup()
+                    raise ConnectionError(f"{self} failed to capture frames during warmup.")
+
+        logger.info(f"{self} connected.")
+
+    def _open_pipeline(self) -> None:
+        """按 SN 查找设备并启动 SDK pipeline (connect 与断流恢复共用)."""
         if self.config.serial_number:
             ctx = pyorbbecsdk.Context()
             device_list = ctx.query_devices()
@@ -102,22 +123,15 @@ class OrbbecCamera(Camera):
         self.pipeline.start(config)
         logger.info(f"{self} pipeline started.")
 
-        self._start_read_thread()
-
-        if warmup and self.warmup_s > 0:
-            start_time = time.time()
-            while time.time() - start_time < self.warmup_s:
-                try:
-                    self.async_read(timeout_ms=self.warmup_s * 1000)
-                except TimeoutError:
-                    pass
-                time.sleep(0.1)
-            with self.frame_lock:
-                if self.latest_frame is None:
-                    self._cleanup()
-                    raise ConnectionError(f"{self} failed to capture frames during warmup.")
-
-        logger.info(f"{self} connected.")
+    def _close_pipeline(self) -> None:
+        """停止 SDK pipeline 并释放句柄 (不触碰读线程状态)."""
+        if self.pipeline is not None:
+            try:
+                self.pipeline.stop()
+            except Exception as e:
+                logger.warning(f"{self} pipeline stop failed during cleanup: {e}")
+        self.pipeline = None
+        self.device = None
 
     def _configure_device(self) -> None:
         if self.device is None:
@@ -218,6 +232,8 @@ class OrbbecCamera(Camera):
             raise RuntimeError(f"{self}: stop_event not initialized.")
 
         failure_count = 0
+        restart_count = 0
+        max_restarts = 5
         while not self.stop_event.is_set():
             try:
                 raw_frame = self._read_from_hardware()
@@ -229,6 +245,7 @@ class OrbbecCamera(Camera):
                     self.latest_timestamp = capture_time
                 self.new_frame_event.set()
                 failure_count = 0
+                restart_count = 0
 
             except DeviceNotConnectedError:
                 break
@@ -236,6 +253,21 @@ class OrbbecCamera(Camera):
                 failure_count += 1
                 if failure_count <= 10:
                     logger.warning(f"Error reading frame in background thread for {self}: {e}")
+                elif restart_count < max_restarts:
+                    # 连续失败视为流硬死 (USB 掉线/底层缓冲阻塞), 重建 pipeline 自愈
+                    restart_count += 1
+                    logger.warning(
+                        f"{self} stream stalled ({failure_count} consecutive failures), "
+                        f"restarting pipeline (attempt {restart_count}/{max_restarts})"
+                    )
+                    try:
+                        self._close_pipeline()
+                        time.sleep(1.0)
+                        self._open_pipeline()
+                        failure_count = 0
+                    except Exception as restart_err:
+                        logger.warning(f"{self} pipeline restart failed: {restart_err}")
+                        time.sleep(2.0)
                 else:
                     raise RuntimeError(f"{self} exceeded max consecutive read failures.") from e
 
