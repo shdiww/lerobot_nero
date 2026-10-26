@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from lerobot.configs.default import DatasetConfig
@@ -49,3 +50,26 @@ class TrainRLServerPipelineConfig(TrainPipelineConfig):
 
         if getattr(self.algorithm, "policy_config", None) is None:
             self.algorithm.policy_config = self.policy
+
+        # RL configs are usually built from CLI defaults, so the policy's
+        # dataset_stats would stay at their placeholder values (e.g. min=0/max=1)
+        # and silently break normalization — including the base-action scaling
+        # of residual TD3. The demo dataset defines the real stats on both the
+        # actor and learner sides.
+        if self.dataset is not None and self.policy is not None:
+            self._populate_policy_dataset_stats_from_dataset()
+
+    def _populate_policy_dataset_stats_from_dataset(self) -> None:
+        from lerobot.datasets import LeRobotDatasetMetadata
+
+        meta = LeRobotDatasetMetadata(repo_id=self.dataset.repo_id, root=self.dataset.root)
+        stats = {
+            key: {stat_name: tensor.tolist() for stat_name, tensor in feats.items()}
+            for key, feats in meta.stats.items()
+        }
+        if stats:
+            logging.info(
+                f"Populated policy dataset_stats from dataset '{self.dataset.repo_id}' "
+                f"(features: {sorted(stats.keys())})"
+            )
+            self.policy.dataset_stats = stats

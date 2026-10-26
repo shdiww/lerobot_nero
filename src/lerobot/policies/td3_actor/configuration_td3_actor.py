@@ -117,6 +117,11 @@ class TD3ActorConfig(PreTrainedConfig):
     # Required for rollouts in residual mode; the base weights are never
     # trained and are not part of the algorithm checkpoints.
     base_policy_path: str | None = None
+    # Type of the frozen base policy (registry name accepted by
+    # ``lerobot.policies.factory.get_policy_class``), e.g. "act" or "diffusion".
+    # Any BC policy with ``select_action``/``reset`` and pre/post processors
+    # works — the residual method itself is agnostic to the base architecture.
+    base_policy_type: str = "act"
     # Bound on the residual magnitude: residual = action_scale * tanh(x)
     action_scale: float = 0.2
     # Init scale for the actor final layer. 0.0 makes the residual start at

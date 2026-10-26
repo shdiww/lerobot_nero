@@ -154,6 +154,42 @@ def test_base_action_normalization_matches_formula():
     assert torch.allclose(obs[OBS_BASE_ACTION], torch.full((ACTION_DIM,), -0.125))
 
 
+def test_load_base_policy_uses_configured_policy_type(monkeypatch):
+    """Any policy registry type (e.g. "diffusion") can serve as the frozen base."""
+    from unittest.mock import MagicMock
+
+    import lerobot.policies.factory as policy_factory
+    import lerobot.rl.base_policy_wrapper as bpw
+
+    requested = {}
+    fake_policy = MagicMock()
+    fake_policy.parameters.return_value = iter(())
+    fake_policy.config = SimpleNamespaceLikeConfig()
+
+    def fake_get_policy_class(name):
+        requested["name"] = name
+        return MagicMock(from_pretrained=lambda path: fake_policy)
+
+    monkeypatch.setattr(policy_factory, "get_policy_class", fake_get_policy_class)
+    monkeypatch.setattr(
+        bpw,
+        "make_pre_post_processors",
+        lambda *args, **kwargs: (IdentityPreprocessor(), MinMaxPostprocessor(0.0, 2.0)),
+    )
+
+    policy, preprocessor, postprocessor = bpw.load_base_policy(
+        "fake/path", device="cpu", base_policy_type="diffusion"
+    )
+    assert requested["name"] == "diffusion"
+    # The loaded policy went through the to(device) + eval() chain
+    fake_policy.to.assert_called_once_with("cpu")
+    fake_policy.to.return_value.eval.assert_called_once()
+
+    # Default remains "act"
+    bpw.load_base_policy("fake/path", device="cpu")
+    assert requested["name"] == "act"
+
+
 def test_make_policy_auto_injects_base_action_feature():
     from types import SimpleNamespace
 

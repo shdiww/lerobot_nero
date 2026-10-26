@@ -37,8 +37,8 @@ from lerobot.policies.td3_actor.configuration_td3_actor import OBS_BASE_ACTION
 from lerobot.utils.constants import ACTION
 
 
-def load_base_policy(base_policy_path: str, device: str):
-    """Load a frozen base policy (e.g. ACT) plus its pre/post processors.
+def load_base_policy(base_policy_path: str, device: str, base_policy_type: str = "act"):
+    """Load a frozen base policy (ACT, diffusion, ...) plus its pre/post processors.
 
     Processor configs saved alongside the checkpoint take precedence; otherwise
     the processors are rebuilt from the dataset stats stored in the policy
@@ -46,7 +46,7 @@ def load_base_policy(base_policy_path: str, device: str):
     """
     from lerobot.policies.factory import get_policy_class
 
-    policy_cls = get_policy_class("act")
+    policy_cls = get_policy_class(base_policy_type)
     base_policy = policy_cls.from_pretrained(base_policy_path)
     base_policy = base_policy.to(device).eval()
     for param in base_policy.parameters():
@@ -207,9 +207,12 @@ def _make_computer_from_base_policy_path(
     dataset_stats: dict,
     device: str,
     action_dim: int | None = None,
+    base_policy_type: str = "act",
 ) -> BaseActionComputer:
     action_min, action_max = _validate_action_stats(dataset_stats, action_dim=action_dim)
-    base_policy, base_preprocessor, base_postprocessor = load_base_policy(base_policy_path, device=device)
+    base_policy, base_preprocessor, base_postprocessor = load_base_policy(
+        base_policy_path, device=device, base_policy_type=base_policy_type
+    )
     return BaseActionComputer(
         base_policy=base_policy,
         base_preprocessor=base_preprocessor,
@@ -236,6 +239,7 @@ def wrap_env_with_base_policy(env: gym.Env, policy_cfg, device: str) -> BasePoli
         dataset_stats=policy_cfg.dataset_stats,
         device=device,
         action_dim=policy_cfg.output_features[ACTION].shape[0],
+        base_policy_type=policy_cfg.base_policy_type,
     )
     logging.info(f"Wrapping env with frozen base policy from '{policy_cfg.base_policy_path}'")
     return BasePolicyEnvWrapper(env=env, base_action_computer=computer)
@@ -245,6 +249,7 @@ def make_base_action_labeler(
     base_policy_path: str,
     dataset_stats: dict,
     device: str,
+    base_policy_type: str = "act",
 ) -> BaseActionComputer:
     """Build a per-frame base-action labeler for demonstration datasets.
 
@@ -253,4 +258,9 @@ def make_base_action_labeler(
     ``reset()`` so ``ReplayBuffer.from_lerobot_dataset`` can reset chunked base
     policies at episode boundaries.
     """
-    return _make_computer_from_base_policy_path(base_policy_path, dataset_stats=dataset_stats, device=device)
+    return _make_computer_from_base_policy_path(
+        base_policy_path,
+        dataset_stats=dataset_stats,
+        device=device,
+        base_policy_type=base_policy_type,
+    )

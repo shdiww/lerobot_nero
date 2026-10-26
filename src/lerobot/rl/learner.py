@@ -865,6 +865,7 @@ def initialize_offline_replay_buffer(
             cfg.policy.base_policy_path,
             dataset_stats=cfg.policy.dataset_stats,
             device=device,
+            base_policy_type=cfg.policy.base_policy_type,
         )
 
     logging.info("Convert to a offline replay buffer")
